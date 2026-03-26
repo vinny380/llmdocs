@@ -7,12 +7,11 @@ on:
 
 permissions:
   contents: read
-  # Required for PyPI Trusted Publisher (OIDC — no API token needed).
   id-token: write
 
 jobs:
-  publish:
-    name: "Build and publish"
+  pypi:
+    name: "Publish to PyPI"
     runs-on: ubuntu-latest
     environment: pypi
 
@@ -36,3 +35,35 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  docker:
+    name: "Push to Docker Hub"
+    runs-on: ubuntu-latest
+    needs: pypi
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            vinny2prg/llmdocs:${{ steps.version.outputs.version }}
+            vinny2prg/llmdocs:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
