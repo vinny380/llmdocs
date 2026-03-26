@@ -191,6 +191,37 @@ def test_index_chunks_openai_never_sees_empty_strings(tmp_path: Path) -> None:
 # ── openai provider ───────────────────────────────────────────────────────
 
 
+def test_openai_embed_batches_over_azure_input_limit(tmp_path: Path) -> None:
+    """Azure caps inputs at 2048 per request; _embed splits into batches of 2000."""
+    emb_cfg = Config.EmbeddingsConfig(
+        provider="openai",
+        model="text-embedding-3-small",
+        api_key="sk-test",
+    )
+
+    batch_sizes: list[int] = []
+
+    def fake_create(**kwargs: object) -> MagicMock:
+        batch = kwargs["input"]
+        assert isinstance(batch, list)
+        batch_sizes.append(len(batch))
+        r = MagicMock()
+        r.data = [MagicMock(embedding=[0.1, 0.2]) for _ in batch]
+        return r
+
+    with patch("openai.OpenAI") as mock_openai_cls:
+        mock_client = MagicMock()
+        mock_client.embeddings.create.side_effect = fake_create
+        mock_openai_cls.return_value = mock_client
+
+        indexer = DocumentIndexer(data_dir=tmp_path, embeddings_config=emb_cfg)
+        texts = [f"chunk-{i}" for i in range(2500)]
+        out = indexer._embed(texts)
+
+    assert batch_sizes == [2000, 500]
+    assert len(out) == 2500
+
+
 def test_indexer_openai_provider(tmp_path: Path, sample_chunks: list[Chunk]) -> None:
     """OpenAI provider dispatches to the openai client, not SentenceTransformer."""
     emb_cfg = Config.EmbeddingsConfig(

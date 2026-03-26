@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Azure OpenAI embeddings allow at most 2048 inputs per request; stay under with margin.
+_OPENAI_EMBEDDING_INPUT_BATCH = 2000
+
 
 def _chunk_metadata_for_chroma(chunk: Chunk) -> Dict[str, Any]:
     """Chroma metadata: str, int, float, or bool only."""
@@ -110,10 +113,14 @@ class DocumentIndexer:
             emb = self._local_model.encode(texts, show_progress_bar=False)
             return emb.tolist() if hasattr(emb, "tolist") else [list(v) for v in emb]
 
-        resp = self._openai_client.embeddings.create(
-            input=texts, model=self._model_name
-        )
-        return [item.embedding for item in resp.data]
+        all_embeddings: List[List[float]] = []
+        for i in range(0, len(texts), _OPENAI_EMBEDDING_INPUT_BATCH):
+            batch = texts[i : i + _OPENAI_EMBEDDING_INPUT_BATCH]
+            resp = self._openai_client.embeddings.create(
+                input=batch, model=self._model_name
+            )
+            all_embeddings.extend(item.embedding for item in resp.data)
+        return all_embeddings
 
     def index_chunks(self, chunks: List[Chunk]) -> None:
         """Index a list of chunks (adds to the collection)."""
