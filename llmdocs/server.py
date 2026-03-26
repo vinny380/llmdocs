@@ -19,7 +19,7 @@ from llmdocs.doc_paths import resolve_doc_path
 from llmdocs.hasher import FileHasher
 from llmdocs.indexer import DocumentIndexer
 from llmdocs.parser import DocumentParser
-from llmdocs.mcp import router as mcp_router
+from llmdocs.mcp import LlmdocsRuntime, create_mcp_server
 from llmdocs.search import HybridSearchEngine
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,10 @@ logger = logging.getLogger(__name__)
 
 def create_app(config: Config, data_dir: Path) -> FastAPI:
     """Create FastAPI app with startup indexing and health routes."""
+
+    runtime = LlmdocsRuntime()
+    mcp_server = create_mcp_server(runtime)
+    mcp_app = mcp_server.http_app(path="/")
 
     parser = DocumentParser()
     chunker = DocumentChunker(max_chunk_tokens=config.search.chunk_size)
@@ -37,7 +41,7 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
     )
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async def indexing_lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("Starting llmdocs server...")
 
         current_hashes = hasher.hash_directory(config.docs_dir)
@@ -79,24 +83,36 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
         else:
             logger.info("Index is fresh, no update needed")
 
-        app.state.indexer = indexer
-        app.state.search_engine = HybridSearchEngine(
+        search_engine = HybridSearchEngine(
             indexer=indexer,
             semantic_weight=config.search.semantic_weight,
             keyword_weight=config.search.keyword_weight,
         )
+        app.state.indexer = indexer
+        app.state.search_engine = search_engine
         app.state.parser = parser
         app.state.config = config
+        app.state.mcp = mcp_server
+
+        runtime.search_engine = search_engine
+        runtime.parser = parser
+        runtime.config = config
 
         logger.info("Server ready at http://%s:%s", config.server.host, config.server.port)
 
         yield
 
+    @asynccontextmanager
+    async def combined_lifespan(app: FastAPI) -> AsyncIterator[None]:
+        async with indexing_lifespan(app):
+            async with mcp_app.lifespan(app):
+                yield
+
     app = FastAPI(
         title="llmdocs",
         description="Agent-first documentation platform",
         version=__version__,
-        lifespan=lifespan,
+        lifespan=combined_lifespan,
     )
 
     @app.get("/")
@@ -107,7 +123,7 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
             "description": "Agent-first documentation platform",
             "endpoints": {
                 "health": "/health",
-                "mcp_tools": "/mcp/*",
+                "mcp": "Streamable HTTP MCP at /mcp (FastMCP tools: search_docs, get_doc, list_docs)",
                 "raw_markdown": "GET /<path>.md (body without frontmatter)",
                 "llms_txt": "/llms.txt",
                 "docs": "/docs",
@@ -118,7 +134,7 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "healthy", "version": __version__}
 
-    app.include_router(mcp_router)
+    app.mount("/mcp", mcp_app)
 
     @app.get("/{path:path}")
     async def raw_markdown(path: str, request: Request) -> Response:

@@ -43,6 +43,7 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 - Run **`pytest`** before finishing a task; keep coverage meaningful on `llmdocs/` (see `pyproject.toml` pytest/cov options).
 - Smoke-test the **CLI** where it matters (e.g. `--version`, subcommands) with `click.testing.CliRunner` or equivalent.
 - For **FastAPI** + **lifespan** startup: use `with TestClient(app) as client:` (or equivalent) so **`app.state`** is set before requests hit routes that depend on it.
+- **MCP (FastMCP)** tools are exercised with **`fastmcp.client.Client(app.state.mcp)`** in tests (in-process). The public HTTP surface at `/mcp` is **Streamable HTTP MCP**, not REST handlers like `POST /mcp/search_docs`.
 
 ---
 
@@ -73,9 +74,10 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 | `llmdocs/hasher.py` | SHA-256 per file; incremental diff maps. |
 | `llmdocs/indexer.py` | Chroma persistent store + `sentence-transformers` embeddings. |
 | `llmdocs/search.py` | `HybridSearchEngine`: Chroma semantic + BM25, `rebuild_index`. |
-| `llmdocs/server.py` | FastAPI app, lifespan startup indexing, `/`, `/health`. |
-| `llmdocs/mcp.py` | JSON routes: `POST /mcp/search_docs`, `get_doc`, `list_docs`. |
-| Future | Raw markdown, `llms.txt`, full CLI, Docker, CI. |
+| `llmdocs/server.py` | FastAPI app, lifespan startup indexing, `/`, `/health`, mounts FastMCP at `/mcp`. |
+| `llmdocs/mcp.py` | **FastMCP** tools: `search_docs`, `get_doc`, `list_docs` (Streamable HTTP MCP at `/mcp`; not ad-hoc REST JSON). |
+| `llmdocs/doc_paths.py` | Safe URL → filesystem resolution for docs. |
+| Future | `llms.txt`, full CLI, Docker, CI. |
 
 Follow the implementation plan in Bossa Memory / project docs when choosing task order and filenames, but **this repo and tests are the source of truth** if anything diverges.
 

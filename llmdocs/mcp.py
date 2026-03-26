@@ -1,122 +1,106 @@
-"""HTTP JSON routes for agent tools (MCP-aligned names under /mcp)."""
+"""FastMCP tools for agent access (search, get doc, list docs)."""
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Request
-from pydantic import BaseModel, Field
+from fastapi import HTTPException
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 
+from llmdocs.config import Config
 from llmdocs.doc_paths import resolve_doc_path
-
-router = APIRouter(prefix="/mcp", tags=["mcp"])
-
-
-class SearchDocsRequest(BaseModel):
-    query: str
-    limit: int = Field(default=5, ge=1, le=100)
+from llmdocs.parser import DocumentParser
+from llmdocs.search import HybridSearchEngine
 
 
-class SearchHit(BaseModel):
-    title: str
-    description: str
-    content_chunk: str
-    url: str
-    score: float
+@dataclass
+class LlmdocsRuntime:
+    """Populated during FastAPI lifespan before MCP tools run."""
+
+    search_engine: HybridSearchEngine | None = None
+    parser: DocumentParser | None = None
+    config: Config | None = None
 
 
-class SearchDocsResponse(BaseModel):
-    results: List[SearchHit]
+def _tool_error_from_http(exc: HTTPException) -> ToolError:
+    detail = exc.detail
+    msg = detail if isinstance(detail, str) else str(detail)
+    return ToolError(msg)
 
 
-class GetDocRequest(BaseModel):
-    path: str = Field(..., description="Document path, e.g. /guide.md")
+def create_mcp_server(runtime: LlmdocsRuntime) -> FastMCP:
+    """Build a FastMCP server whose tools read from ``runtime`` (filled at startup)."""
+    mcp = FastMCP("llmdocs")
 
+    @mcp.tool()
+    def search_docs(query: str, limit: int = 5) -> Dict[str, Any]:
+        """Hybrid search over indexed chunks (semantic + keyword)."""
+        if runtime.search_engine is None:
+            raise ToolError("Search engine not initialized")
+        hits = runtime.search_engine.search(query.strip(), limit=limit)
+        return {
+            "results": [
+                {
+                    "title": h.title,
+                    "description": h.description,
+                    "content_chunk": h.content_chunk,
+                    "url": h.url,
+                    "score": h.score,
+                }
+                for h in hits
+            ]
+        }
 
-class GetDocResponse(BaseModel):
-    title: str
-    description: str
-    content: str
-    url: str
-    metadata: dict[str, Any]
+    @mcp.tool()
+    def get_doc(path: str) -> Dict[str, Any]:
+        """Return full document body (no frontmatter) and metadata."""
+        if runtime.parser is None or runtime.config is None:
+            raise ToolError("Document services not initialized")
+        try:
+            fs_path = resolve_doc_path(runtime.config.docs_dir, path)
+        except HTTPException as e:
+            raise _tool_error_from_http(e) from e
+        doc = runtime.parser.parse(fs_path, base_dir=runtime.config.docs_dir)
+        return {
+            "title": doc.title,
+            "description": doc.description,
+            "content": doc.content,
+            "url": doc.path,
+            "metadata": doc.metadata.model_dump(),
+        }
 
+    @mcp.tool()
+    def list_docs(
+        category: Optional[str] = None,
+        path: str = "/",
+    ) -> Dict[str, Any]:
+        """List documents under the docs tree, optionally filtered by category and path prefix."""
+        if runtime.parser is None or runtime.config is None:
+            raise ToolError("Document services not initialized")
+        docs = runtime.parser.load_all(runtime.config.docs_dir)
 
-class ListDocsRequest(BaseModel):
-    category: Optional[str] = None
-    path: str = Field(default="/", description="Path prefix filter (default all)")
+        prefix = path.strip() or "/"
+        if not prefix.startswith("/"):
+            prefix = "/" + prefix
 
-
-class ListDocItem(BaseModel):
-    title: str
-    description: str
-    path: str
-    category: str
-
-
-class ListDocsResponse(BaseModel):
-    documents: List[ListDocItem]
-
-
-@router.post("/search_docs", response_model=SearchDocsResponse)
-async def search_docs(body: SearchDocsRequest, request: Request) -> SearchDocsResponse:
-    """Hybrid search over indexed chunks (semantic + keyword)."""
-    engine = request.app.state.search_engine
-    hits = engine.search(body.query.strip(), limit=body.limit)
-    return SearchDocsResponse(
-        results=[
-            SearchHit(
-                title=h.title,
-                description=h.description,
-                content_chunk=h.content_chunk,
-                url=h.url,
-                score=h.score,
+        out: List[Dict[str, str]] = []
+        for d in docs:
+            if category is not None and d.metadata.category != category:
+                continue
+            if prefix not in ("", "/") and not d.path.startswith(prefix):
+                continue
+            out.append(
+                {
+                    "title": d.title,
+                    "description": d.description,
+                    "path": d.path,
+                    "category": d.metadata.category,
+                }
             )
-            for h in hits
-        ]
-    )
 
+        out.sort(key=lambda x: (x["category"], x["path"]))
+        return {"documents": out}
 
-@router.post("/get_doc", response_model=GetDocResponse)
-async def get_doc(body: GetDocRequest, request: Request) -> GetDocResponse:
-    """Return full document body (no frontmatter) and metadata."""
-    config = request.app.state.config
-    parser = request.app.state.parser
-    path = resolve_doc_path(config.docs_dir, body.path)
-    doc = parser.parse(path, base_dir=config.docs_dir)
-    return GetDocResponse(
-        title=doc.title,
-        description=doc.description,
-        content=doc.content,
-        url=doc.path,
-        metadata=doc.metadata.model_dump(),
-    )
-
-
-@router.post("/list_docs", response_model=ListDocsResponse)
-async def list_docs(body: ListDocsRequest, request: Request) -> ListDocsResponse:
-    """List documents under docs_dir, optionally filtered by category and path prefix."""
-    config = request.app.state.config
-    parser = request.app.state.parser
-    docs = parser.load_all(config.docs_dir)
-
-    prefix = body.path.strip() or "/"
-    if not prefix.startswith("/"):
-        prefix = "/" + prefix
-
-    out: List[ListDocItem] = []
-    for d in docs:
-        if body.category is not None and d.metadata.category != body.category:
-            continue
-        if prefix not in ("", "/") and not d.path.startswith(prefix):
-            continue
-        out.append(
-            ListDocItem(
-                title=d.title,
-                description=d.description,
-                path=d.path,
-                category=d.metadata.category,
-            )
-        )
-
-    out.sort(key=lambda x: (x.category, x.path))
-    return ListDocsResponse(documents=out)
+    return mcp

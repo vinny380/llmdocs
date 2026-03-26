@@ -1,50 +1,75 @@
-"""Tests for /mcp JSON routes."""
+"""Tests for FastMCP tools (in-process client)."""
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
+from fastmcp.client import Client
 
 
-def test_search_docs(test_client: TestClient) -> None:
-    r = test_client.post("/mcp/search_docs", json={"query": "guide", "limit": 3})
-    assert r.status_code == 200
-    data = r.json()
-    assert "results" in data
-    assert isinstance(data["results"], list)
+@pytest.mark.asyncio
+async def test_search_docs(test_client: TestClient) -> None:
+    mcp = test_client.app.state.mcp
+    async with Client(mcp) as client:
+        r = await client.call_tool("search_docs", {"query": "guide", "limit": 3})
+    assert r.data is not None
+    assert "results" in r.data
+    assert isinstance(r.data["results"], list)
 
 
-def test_get_doc(test_client: TestClient) -> None:
-    r = test_client.post("/mcp/get_doc", json={"path": "/guide.md"})
-    assert r.status_code == 200
-    data = r.json()
-    assert data["title"] == "Guide"
-    assert "This is a guide" in data["content"]
-    assert data["url"] == "/guide.md"
-    assert "category" in data["metadata"]
+@pytest.mark.asyncio
+async def test_get_doc(test_client: TestClient) -> None:
+    mcp = test_client.app.state.mcp
+    async with Client(mcp) as client:
+        r = await client.call_tool("get_doc", {"path": "/guide.md"})
+    assert r.data is not None
+    assert r.data["title"] == "Guide"
+    assert "This is a guide" in r.data["content"]
+    assert r.data["url"] == "/guide.md"
+    assert "category" in r.data["metadata"]
 
 
-def test_get_doc_not_found(test_client: TestClient) -> None:
-    r = test_client.post("/mcp/get_doc", json={"path": "/missing.md"})
-    assert r.status_code == 404
+@pytest.mark.asyncio
+async def test_get_doc_not_found(test_client: TestClient) -> None:
+    mcp = test_client.app.state.mcp
+    async with Client(mcp) as client:
+        r = await client.call_tool(
+            "get_doc",
+            {"path": "/missing.md"},
+            raise_on_error=False,
+        )
+    assert r.is_error
 
 
-def test_get_doc_path_traversal(test_client: TestClient) -> None:
-    r = test_client.post("/mcp/get_doc", json={"path": "/../etc/passwd"})
-    assert r.status_code == 400
+@pytest.mark.asyncio
+async def test_get_doc_path_traversal(test_client: TestClient) -> None:
+    mcp = test_client.app.state.mcp
+    async with Client(mcp) as client:
+        r = await client.call_tool(
+            "get_doc",
+            {"path": "/../etc/passwd"},
+            raise_on_error=False,
+        )
+    assert r.is_error
 
 
-def test_list_docs(test_client: TestClient) -> None:
-    r = test_client.post("/mcp/list_docs", json={})
-    assert r.status_code == 200
-    data = r.json()
-    paths = {d["path"] for d in data["documents"]}
+@pytest.mark.asyncio
+async def test_list_docs(test_client: TestClient) -> None:
+    mcp = test_client.app.state.mcp
+    async with Client(mcp) as client:
+        r = await client.call_tool("list_docs", {})
+    assert r.data is not None
+    paths = {d["path"] for d in r.data["documents"]}
     assert "/index.md" in paths
     assert "/guide.md" in paths
 
 
-def test_list_docs_filter_category(test_client: TestClient) -> None:
-    r = test_client.post("/mcp/list_docs", json={"category": "Tutorial"})
-    assert r.status_code == 200
-    docs = r.json()["documents"]
+@pytest.mark.asyncio
+async def test_list_docs_filter_category(test_client: TestClient) -> None:
+    mcp = test_client.app.state.mcp
+    async with Client(mcp) as client:
+        r = await client.call_tool("list_docs", {"category": "Tutorial"})
+    assert r.data is not None
+    docs = r.data["documents"]
     assert len(docs) == 1
     assert docs[0]["path"] == "/guide.md"
