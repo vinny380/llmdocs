@@ -71,7 +71,8 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 | `llmdocs/chunker.py` | H2/H3 chunking, tiktoken limits. |
 | `llmdocs/hasher.py` | SHA-256 per file; incremental diff maps. |
 | `llmdocs/indexer.py` | Chroma persistent store + `sentence-transformers` embeddings. |
-| Future | `search`, `server`, `mcp`, `llms_txt`, templates for `init`, Dockerfile, CI. |
+| `llmdocs/search.py` | `HybridSearchEngine`: Chroma semantic + BM25, `rebuild_index`. |
+| Future | `server`, `mcp`, `llms_txt`, templates for `init`, Dockerfile, CI. |
 
 Follow the implementation plan in Bossa Memory / project docs when choosing task order and filenames, but **this repo and tests are the source of truth** if anything diverges.
 
