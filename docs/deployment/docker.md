@@ -41,3 +41,7 @@ Override config with **`-e LLMDOCS_CONFIG=...`** or mount a file to `/app/llmdoc
 ## First-run latency
 
 The **embedding model** downloads on first use (Hugging Face cache). Plan for extra startup time or pre-bake/cache in advanced setups.
+
+## See also
+
+- [Deploy to production](./hosting.md) — TLS, bind addresses, and full hosting checklist.

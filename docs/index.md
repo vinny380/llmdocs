@@ -42,6 +42,7 @@ PyPI package name is **`llmdocs-mcp`**; the command-line program is **`llmdocs`*
 - [Installation](./getting-started/installation.md) — PyPI, Docker, from source.
 - [Quickstart](./getting-started/quickstart.md) — config, index, browser and MCP.
 - [Configuration](./guides/configuration.md) — `llmdocs.yaml` reference.
+- [Deploy to production](./deployment/hosting.md) — Docker, TLS, reverse proxy.
 - [CLI reference](./reference/cli.md) — all commands and flags.
 - [Contributing](./contributing/contributing.md) — issues, PRs, code style.
 
