@@ -25,7 +25,9 @@ def _strip_yaml_frontmatter_block(raw: str) -> str:
 
 
 def _rel_url_path(file_path: Path, base_dir: Path) -> str:
-    rel = file_path.relative_to(base_dir)
+    # Resolve both to absolute before computing relative so that mixing
+    # relative and absolute paths (e.g. resolve_doc_path vs ./docs) works.
+    rel = file_path.resolve().relative_to(base_dir.resolve())
     return "/" + rel.as_posix()
 
 
