@@ -1,0 +1,21 @@
+services:
+  llmdocs:
+    build: .
+    image: llmdocs:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount your docs directory here
+      - ./docs:/docs:ro
+      # Persist the ChromaDB index and generated llms.txt between restarts
+      - llmdocs_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  llmdocs_data:

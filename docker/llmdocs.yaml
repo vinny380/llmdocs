@@ -1,0 +1,15 @@
+# Default config used inside the Docker image.
+# Mount your own docs/ and override this file via -v or environment if needed.
+docs_dir: /docs
+server:
+  host: 0.0.0.0
+  port: 8080
+search:
+  semantic_weight: 0.7
+  keyword_weight: 0.3
+  chunk_size: 500
+embeddings:
+  model: sentence-transformers/all-MiniLM-L6-v2
+llms_txt:
+  output_path: /data/llms.txt
+  manual_override: null

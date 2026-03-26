@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Dev / test
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ChromaDB data
+.chroma/
+chroma_data/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Local docs and generated outputs
+docs/
+llms.txt
+llmdocs.yaml
+
+# Misc
+*.md
+!README.md
+.llmdocs/
