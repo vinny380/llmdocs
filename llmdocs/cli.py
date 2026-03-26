@@ -148,6 +148,50 @@ def serve(
     run_server(cfg, data_dir=data, watch=watch)
 
 
+def _index_docs(cfg: "Config", data: Path) -> tuple[int, int, int]:
+    """Shared core: incremental index rebuild + llms.txt write.
+
+    Returns (added, changed, deleted) counts.
+    """
+    from llmdocs.indexing import DocumentChunker, DocumentIndexer, DocumentParser, FileHasher
+    from llmdocs.llms_txt import generate_llms_txt
+    from llmdocs.models import Chunk as ChunkModel
+
+    parser = DocumentParser()
+    chunker = DocumentChunker(max_chunk_tokens=cfg.search.chunk_size)
+    hasher = FileHasher()
+    indexer = DocumentIndexer(data_dir=data, embedding_model=cfg.embeddings.model)
+
+    current_hashes = hasher.hash_directory(cfg.docs_dir)
+    stored_hashes = indexer.get_all_hashes()
+    changed, added, deleted = hasher.detect_changes(stored_hashes, current_hashes)
+
+    for doc_path in deleted:
+        indexer.delete_by_doc_path(doc_path)
+
+    docs_to_index = list(changed | added)
+    if docs_to_index:
+        all_docs = parser.load_all(cfg.docs_dir)
+        to_reindex = [d for d in all_docs if d.path in docs_to_index]
+        for doc in to_reindex:
+            doc.file_hash = current_hashes[doc.path]
+        all_chunks: list[ChunkModel] = []
+        for doc in to_reindex:
+            if doc.path in changed:
+                indexer.delete_by_doc_path(doc.path)
+            chunks = chunker.chunk(doc)
+            for ch in chunks:
+                ch.metadata["file_hash"] = doc.file_hash
+            all_chunks.extend(chunks)
+        if all_chunks:
+            indexer.index_chunks(all_chunks)
+
+    all_docs = parser.load_all(cfg.docs_dir)
+    cfg.llms_txt.output_path.write_text(generate_llms_txt(all_docs), encoding="utf-8")
+
+    return len(added), len(changed), len(deleted)
+
+
 @cli.command("build")
 @click.option(
     "--config",
@@ -165,57 +209,15 @@ def serve(
 def build(config_path: str, data_dir: str) -> None:
     """Pre-build the search index and write llms.txt to disk."""
     from llmdocs.config import Config
-    from llmdocs.indexing import DocumentChunker, DocumentIndexer, DocumentParser, FileHasher
-    from llmdocs.llms_txt import generate_llms_txt
-    from llmdocs.models import Chunk as ChunkModel
 
     cfg = Config.load(_require_config(config_path))
     data = Path(data_dir)
     data.mkdir(parents=True, exist_ok=True)
 
-    parser = DocumentParser()
-    chunker = DocumentChunker(max_chunk_tokens=cfg.search.chunk_size)
-    hasher = FileHasher()
-    indexer = DocumentIndexer(data_dir=data, embedding_model=cfg.embeddings.model)
-
     click.echo(f"Indexing {cfg.docs_dir}...")
-
-    current_hashes = hasher.hash_directory(cfg.docs_dir)
-    stored_hashes = indexer.get_all_hashes()
-    changed, added, deleted = hasher.detect_changes(stored_hashes, current_hashes)
-
-    for doc_path in deleted:
-        indexer.delete_by_doc_path(doc_path)
-
-    docs_to_index = list(changed | added)
-    if docs_to_index:
-        all_docs = parser.load_all(cfg.docs_dir)
-        to_reindex = [d for d in all_docs if d.path in docs_to_index]
-
-        for doc in to_reindex:
-            doc.file_hash = current_hashes[doc.path]
-
-        all_chunks: list[ChunkModel] = []
-        for doc in to_reindex:
-            if doc.path in changed:
-                indexer.delete_by_doc_path(doc.path)
-            chunks = chunker.chunk(doc)
-            for ch in chunks:
-                ch.metadata["file_hash"] = doc.file_hash
-            all_chunks.extend(chunks)
-
-        if all_chunks:
-            indexer.index_chunks(all_chunks)
-
-    click.echo(
-        f"Done — {len(current_hashes)} doc(s): "
-        f"{len(added)} added, {len(changed)} updated, {len(deleted)} removed."
-    )
-
-    all_docs = parser.load_all(cfg.docs_dir)
-    out_path = cfg.llms_txt.output_path
-    out_path.write_text(generate_llms_txt(all_docs), encoding="utf-8")
-    click.echo(f"Written {out_path}")
+    added, changed, deleted = _index_docs(cfg, data)
+    click.echo(f"Done — {added} added, {changed} updated, {deleted} removed.")
+    click.echo(f"Written {cfg.llms_txt.output_path}")
 
 
 @cli.command("validate")
@@ -247,3 +249,102 @@ def validate(config_path: str) -> None:
         sys.exit(1)
 
     click.echo(f"OK — {len(docs)} doc(s), no issues found.")
+
+
+@cli.command("watch")
+@click.option(
+    "--config",
+    "config_path",
+    default=_DEFAULT_CONFIG,
+    show_default=True,
+    help="Path to llmdocs.yaml.",
+)
+@click.option(
+    "--data-dir",
+    default=_DEFAULT_DATA_DIR,
+    show_default=True,
+    help="Directory for ChromaDB index storage.",
+)
+def watch(config_path: str, data_dir: str) -> None:
+    """Watch docs directory and rebuild index on any markdown change."""
+    import threading
+    import time
+
+    from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
+
+    from llmdocs.config import Config
+
+    cfg = Config.load(_require_config(config_path))
+    data = Path(data_dir)
+    data.mkdir(parents=True, exist_ok=True)
+
+    pending = threading.Event()
+
+    class _Handler(FileSystemEventHandler):
+        def on_any_event(self, event) -> None:  # type: ignore[override]
+            if not event.is_directory and str(event.src_path).endswith(".md"):
+                pending.set()
+
+    observer = Observer()
+    observer.schedule(_Handler(), str(cfg.docs_dir), recursive=True)
+    observer.start()
+    click.echo(f"Watching {cfg.docs_dir} ... (Ctrl+C to stop)")
+
+    try:
+        while True:
+            pending.wait()
+            pending.clear()
+            time.sleep(0.3)  # debounce: let burst of saves settle
+            click.echo(f"[change detected] reindexing...")
+            added, changed, deleted = _index_docs(cfg, data)
+            click.echo(f"  {added} added, {changed} updated, {deleted} removed.")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        observer.stop()
+        observer.join()
+
+
+@cli.command("search")
+@click.argument("query")
+@click.option(
+    "--config",
+    "config_path",
+    default=_DEFAULT_CONFIG,
+    show_default=True,
+    help="Path to llmdocs.yaml.",
+)
+@click.option(
+    "--data-dir",
+    default=_DEFAULT_DATA_DIR,
+    show_default=True,
+    help="Directory for ChromaDB index storage.",
+)
+@click.option("--limit", default=5, show_default=True, help="Maximum results to return.")
+def search_cmd(query: str, config_path: str, data_dir: str, limit: int) -> None:
+    """Search the docs index from the terminal."""
+    from llmdocs.config import Config
+    from llmdocs.indexing import DocumentIndexer
+    from llmdocs.indexing.search import HybridSearchEngine
+
+    cfg = Config.load(_require_config(config_path))
+    data = Path(data_dir)
+
+    indexer = DocumentIndexer(data_dir=data, embedding_model=cfg.embeddings.model)
+    engine = HybridSearchEngine(
+        indexer=indexer,
+        semantic_weight=cfg.search.semantic_weight,
+        keyword_weight=cfg.search.keyword_weight,
+    )
+
+    hits = engine.search(query, limit=limit)
+    if not hits:
+        click.echo("No results found.")
+        return
+
+    for i, hit in enumerate(hits, 1):
+        click.echo(f"\n{i}. {hit.title}  (score: {hit.score:.3f})")
+        click.echo(f"   {hit.url}")
+        if hit.description:
+            click.echo(f"   {hit.description}")
