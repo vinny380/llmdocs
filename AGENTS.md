@@ -42,6 +42,7 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 - For **core behavior** (config, parsing, chunking, indexing, search, HTTP/MCP contracts), follow **red → green** TDD: add or adjust a failing test first, then implement.
 - Run **`pytest`** before finishing a task; keep coverage meaningful on `llmdocs/` (see `pyproject.toml` pytest/cov options).
 - Smoke-test the **CLI** where it matters (e.g. `--version`, subcommands) with `click.testing.CliRunner` or equivalent.
+- For **FastAPI** + **lifespan** startup: use `with TestClient(app) as client:` (or equivalent) so **`app.state`** is set before requests hit routes that depend on it.
 
 ---
 
