@@ -110,6 +110,33 @@ Content for subsection 1.2.
     assert "Subsection" in subsection_chunk.title_hierarchy[2]
 
 
+def test_chunk_empty_content_returns_no_chunks() -> None:
+    """A document with whitespace-only content produces zero chunks."""
+    doc = Document(path="/empty.md", title="Empty", content="   \n\n  ")
+    chunker = DocumentChunker()
+    assert chunker.chunk(doc) == []
+
+
+def test_chunk_frontmatter_only_returns_no_chunks() -> None:
+    """A document whose content is just a heading with no body produces no empty chunks."""
+    doc = Document(path="/heading.md", title="Title", content="# Title\n\n")
+    chunker = DocumentChunker()
+    chunks = chunker.chunk(doc)
+    for c in chunks:
+        assert c.content.strip(), f"chunk {c.chunk_id} has empty content"
+
+
+def test_chunk_empty_h2_section_filtered() -> None:
+    """H2 sections with no body text are filtered out."""
+    content = "# Doc\n\n## Empty Section\n\n## Real Section\n\nSome content here."
+    doc = Document(path="/mixed.md", title="Doc", content=content)
+    chunker = DocumentChunker()
+    chunks = chunker.chunk(doc)
+    for c in chunks:
+        assert c.content.strip(), f"chunk {c.chunk_id} has empty content"
+    assert any("Some content" in c.content for c in chunks)
+
+
 def test_generate_chunk_id() -> None:
     """Test chunk ID generation."""
     doc = Document(path="/getting-started.md", title="Title", content="# Content")

@@ -90,6 +90,104 @@ def test_delete_by_doc_path(tmp_path: Path, sample_chunks: list[Chunk]) -> None:
     assert indexer.collection.count() == 0
 
 
+# ── empty chunk filtering ─────────────────────────────────────────────────
+
+
+def test_index_chunks_filters_empty_content(tmp_path: Path) -> None:
+    """Chunks with empty/whitespace content are silently dropped."""
+    chunks = [
+        Chunk(
+            chunk_id="a_chunk0",
+            doc_path="/a.md",
+            title_hierarchy=["A"],
+            content="Real content here.",
+            url="/a.md",
+            metadata={"category": "General"},
+        ),
+        Chunk(
+            chunk_id="a_chunk1",
+            doc_path="/a.md",
+            title_hierarchy=["A", "Empty"],
+            content="",
+            url="/a.md#empty",
+            metadata={"category": "General"},
+        ),
+        Chunk(
+            chunk_id="a_chunk2",
+            doc_path="/a.md",
+            title_hierarchy=["A", "Whitespace"],
+            content="   \n  ",
+            url="/a.md#whitespace",
+            metadata={"category": "General"},
+        ),
+    ]
+    indexer = DocumentIndexer(data_dir=tmp_path)
+    indexer.index_chunks(chunks)
+    assert indexer.collection.count() == 1
+
+
+def test_index_chunks_all_empty_is_noop(tmp_path: Path) -> None:
+    """If every chunk is empty, nothing is indexed and no API call is made."""
+    chunks = [
+        Chunk(
+            chunk_id="b_chunk0",
+            doc_path="/b.md",
+            title_hierarchy=["B"],
+            content="",
+            url="/b.md",
+            metadata={"category": "General"},
+        ),
+    ]
+    indexer = DocumentIndexer(data_dir=tmp_path)
+    indexer.index_chunks(chunks)
+    assert indexer.collection.count() == 0
+
+
+def test_index_chunks_openai_never_sees_empty_strings(tmp_path: Path) -> None:
+    """With openai provider, empty chunks are filtered before the API call."""
+    emb_cfg = Config.EmbeddingsConfig(
+        provider="openai",
+        model="text-embedding-3-small",
+        api_key="sk-test",
+    )
+
+    mock_embedding = MagicMock()
+    mock_embedding.embedding = [0.1] * 384
+
+    mock_response = MagicMock()
+    mock_response.data = [mock_embedding]
+
+    with patch("openai.OpenAI") as mock_openai_cls:
+        mock_client = MagicMock()
+        mock_client.embeddings.create.return_value = mock_response
+        mock_openai_cls.return_value = mock_client
+
+        indexer = DocumentIndexer(data_dir=tmp_path, embeddings_config=emb_cfg)
+        indexer.index_chunks([
+            Chunk(
+                chunk_id="c_chunk0",
+                doc_path="/c.md",
+                title_hierarchy=["C"],
+                content="Real content.",
+                url="/c.md",
+                metadata={"category": "General"},
+            ),
+            Chunk(
+                chunk_id="c_chunk1",
+                doc_path="/c.md",
+                title_hierarchy=["C"],
+                content="",
+                url="/c.md#empty",
+                metadata={"category": "General"},
+            ),
+        ])
+
+    texts_sent = mock_client.embeddings.create.call_args[1]["input"]
+    assert "" not in texts_sent
+    assert len(texts_sent) == 1
+    assert texts_sent[0] == "Real content."
+
+
 # ── openai provider ───────────────────────────────────────────────────────
 
 

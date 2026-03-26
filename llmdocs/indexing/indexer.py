@@ -103,6 +103,9 @@ class DocumentIndexer:
 
     def _embed(self, texts: List[str]) -> List[List[float]]:
         """Return embedding vectors for *texts* using the configured provider."""
+        if not texts:
+            return []
+
         if self._provider == "local":
             emb = self._local_model.encode(texts, show_progress_bar=False)
             return emb.tolist() if hasattr(emb, "tolist") else [list(v) for v in emb]
@@ -115,6 +118,11 @@ class DocumentIndexer:
     def index_chunks(self, chunks: List[Chunk]) -> None:
         """Index a list of chunks (adds to the collection)."""
         if not chunks:
+            return
+
+        chunks = [c for c in chunks if c.content.strip()]
+        if not chunks:
+            logger.warning("All chunks were empty — nothing to index")
             return
 
         texts = [c.content for c in chunks]

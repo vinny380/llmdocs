@@ -48,11 +48,14 @@ class DocumentChunker:
         h2_matches = list(re.finditer(h2_pattern, content, re.MULTILINE))
 
         if not h2_matches:
+            stripped = content.strip()
+            if not stripped:
+                return []
             chunk = self._create_chunk(
                 document=document,
                 chunk_index=0,
                 title_hierarchy=[document.title],
-                content=content.strip(),
+                content=stripped,
                 section_name="",
             )
             return [chunk]
@@ -88,7 +91,7 @@ class DocumentChunker:
                     )
                 )
 
-        return chunks
+        return [c for c in chunks if c.content.strip()]
 
     def _split_large_section(
         self,
