@@ -72,7 +72,8 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 | `llmdocs/hasher.py` | SHA-256 per file; incremental diff maps. |
 | `llmdocs/indexer.py` | Chroma persistent store + `sentence-transformers` embeddings. |
 | `llmdocs/search.py` | `HybridSearchEngine`: Chroma semantic + BM25, `rebuild_index`. |
-| Future | `server`, `mcp`, `llms_txt`, templates for `init`, Dockerfile, CI. |
+| `llmdocs/server.py` | FastAPI app, lifespan startup indexing, `/`, `/health`. |
+| Future | `mcp`, `llms.txt`, full CLI, Docker, CI. |
 
 Follow the implementation plan in Bossa Memory / project docs when choosing task order and filenames, but **this repo and tests are the source of truth** if anything diverges.
 
