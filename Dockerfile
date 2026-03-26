@@ -13,9 +13,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install locked deps first (cached layer — only invalidated when requirements.txt changes)
+# Install locked deps first (cached layer — only invalidated when requirements.txt changes).
+# PyPI's Linux torch wheel pulls CUDA (~2GB+ of nvidia-* wheels). We only need CPU inference
+# for sentence-transformers in the container, so install torch from PyTorch's CPU index first
+# and exclude the torch line from the full freeze so pip does not replace it.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu && \
+    grep -v '^torch==' requirements.txt > /tmp/requirements-without-torch.txt && \
+    pip install --no-cache-dir -r /tmp/requirements-without-torch.txt
 
 # Install the package itself
 COPY pyproject.toml README.md ./
