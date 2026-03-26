@@ -75,7 +75,10 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 | `llmdocs/indexer.py` | Chroma persistent store + `sentence-transformers` embeddings. |
 | `llmdocs/search.py` | `HybridSearchEngine`: Chroma semantic + BM25, `rebuild_index`. |
 | `llmdocs/server.py` | FastAPI app, lifespan startup indexing, `/`, `/health`, mounts FastMCP at `/mcp`. |
-| `llmdocs/mcp.py` | **FastMCP** tools: `search_docs`, `get_doc`, `list_docs` (Streamable HTTP MCP at `/mcp`; not ad-hoc REST JSON). |
+| `llmdocs/mcp.py` | `create_mcp_server()` — registers FastMCP tools. |
+| `llmdocs/mcp_runtime.py` | `LlmdocsRuntime` (search engine, parser, config) for tools + lifespan. |
+| `llmdocs/mcp_tools.py` | Tool **implementations** (`tool_search_docs`, etc.). |
+| `llmdocs/mcp_wiring.py` | Thin callables that bind runtime (FastMCP needs real functions, not `partial`). |
 | `llmdocs/doc_paths.py` | Safe URL → filesystem resolution for docs. |
 | Future | `llms.txt`, full CLI, Docker, CI. |
 
