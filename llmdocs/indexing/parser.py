@@ -60,7 +60,8 @@ class DocumentParser:
             meta_kw = {
                 k: v
                 for k, v in metadata_dict.items()
-                if k in DocumentMetadata.model_fields and k not in ("title", "description")
+                if k in DocumentMetadata.model_fields
+                and k not in ("title", "description")
             }
             try:
                 metadata = DocumentMetadata.model_validate(meta_kw)

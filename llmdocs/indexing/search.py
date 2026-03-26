@@ -58,7 +58,9 @@ class HybridSearchEngine:
         if not query.strip():
             return []
 
-        semantic_results = self.indexer.semantic_search(query, limit=max(limit * 2, limit))
+        semantic_results = self.indexer.semantic_search(
+            query, limit=max(limit * 2, limit)
+        )
         keyword_results = self._bm25_search(query, limit=max(limit * 2, limit))
 
         combined: Dict[str, Dict[str, object]] = {}

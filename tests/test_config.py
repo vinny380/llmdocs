@@ -64,7 +64,9 @@ def test_load_resolves_relative_paths_against_config_dir(tmp_path: Path) -> None
     subdir = tmp_path / "project"
     subdir.mkdir()
     config_file = subdir / "llmdocs.yaml"
-    config_file.write_text("docs_dir: ./docs\nllms_txt:\n  output_path: ./out/llms.txt\n", encoding="utf-8")
+    config_file.write_text(
+        "docs_dir: ./docs\nllms_txt:\n  output_path: ./out/llms.txt\n", encoding="utf-8"
+    )
 
     config = Config.load(config_file)
 

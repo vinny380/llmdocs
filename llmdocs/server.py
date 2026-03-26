@@ -8,15 +8,17 @@ from pathlib import Path
 from typing import AsyncIterator, List
 
 from fastapi import FastAPI, HTTPException, Request
-from fastmcp.utilities.lifespan import combine_lifespans
 from fastapi.responses import PlainTextResponse, Response
+from fastmcp.utilities.lifespan import combine_lifespans
 
 from llmdocs import __version__
 from llmdocs.config import Config
 from llmdocs.doc_paths import resolve_doc_path
-from llmdocs.indexing import DocumentChunker, DocumentIndexer, DocumentParser, FileHasher, HybridSearchEngine
+from llmdocs.indexing import (DocumentChunker, DocumentIndexer, DocumentParser,
+                              FileHasher, HybridSearchEngine)
 from llmdocs.llms_txt import generate_llms_txt, load_llms_txt
-from llmdocs.mcp import mcp as mcp_server, runtime as mcp_runtime
+from llmdocs.mcp import mcp as mcp_server
+from llmdocs.mcp import runtime as mcp_runtime
 from llmdocs.models import Chunk
 
 logger = logging.getLogger(__name__)
@@ -93,7 +95,9 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
         mcp_runtime.parser = parser
         mcp_runtime.config = config
 
-        logger.info("Server ready at http://%s:%s", config.server.host, config.server.port)
+        logger.info(
+            "Server ready at http://%s:%s", config.server.host, config.server.port
+        )
 
         yield
 
@@ -131,7 +135,9 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
         cfg = request.app.state.config
         override = load_llms_txt(cfg.llms_txt.manual_override)
         if override is not None:
-            return PlainTextResponse(content=override, media_type="text/plain; charset=utf-8")
+            return PlainTextResponse(
+                content=override, media_type="text/plain; charset=utf-8"
+            )
         docs = request.app.state.parser.load_all(cfg.docs_dir)
         return PlainTextResponse(
             content=generate_llms_txt(docs),

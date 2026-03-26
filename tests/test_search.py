@@ -64,7 +64,9 @@ def test_semantic_weight_prioritizes_meaning(search_engine: HybridSearchEngine) 
     assert any("install" in r.content_chunk.lower() for r in results)
 
 
-def test_keyword_weight_prioritizes_exact_matches(search_engine: HybridSearchEngine) -> None:
+def test_keyword_weight_prioritizes_exact_matches(
+    search_engine: HybridSearchEngine,
+) -> None:
     """Keyword search boosts exact matches."""
     results = search_engine.search("llmdocs.yaml", limit=2)
     assert results[0].url == "/config.md"

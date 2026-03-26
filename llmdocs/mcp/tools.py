@@ -17,7 +17,9 @@ def _tool_error_from_http(exc: HTTPException) -> ToolError:
     return ToolError(msg)
 
 
-def tool_search_docs(runtime: LlmdocsRuntime, query: str, limit: int = 5) -> Dict[str, Any]:
+def tool_search_docs(
+    runtime: LlmdocsRuntime, query: str, limit: int = 5
+) -> Dict[str, Any]:
     """Hybrid search over indexed chunks (semantic + keyword)."""
     if runtime.search_engine is None:
         raise ToolError("Search engine not initialized")

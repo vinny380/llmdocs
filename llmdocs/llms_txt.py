@@ -24,7 +24,9 @@ def generate_llms_txt(docs: List[Document], project_name: str = "llmdocs") -> st
     lines: list[str] = [f"# {project_name}", ""]
 
     for category in sorted(by_category):
-        sorted_docs = sorted(by_category[category], key=lambda d: (d.metadata.order, d.path))
+        sorted_docs = sorted(
+            by_category[category], key=lambda d: (d.metadata.order, d.path)
+        )
         lines.append(f"## {category}")
         lines.append("")
         for doc in sorted_docs:

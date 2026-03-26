@@ -60,7 +60,9 @@ class DocumentChunker:
         for i, match in enumerate(h2_matches):
             h2_title = match.group(1).strip()
             start_pos = match.end()
-            end_pos = h2_matches[i + 1].start() if i + 1 < len(h2_matches) else len(content)
+            end_pos = (
+                h2_matches[i + 1].start() if i + 1 < len(h2_matches) else len(content)
+            )
             section_content = content[start_pos:end_pos].strip()
 
             has_h3 = bool(re.search(r"^###\s+", section_content, re.MULTILINE))
@@ -105,7 +107,11 @@ class DocumentChunker:
             for i, match in enumerate(h3_matches):
                 h3_title = match.group(1).strip()
                 start = match.end()
-                end = h3_matches[i + 1].start() if i + 1 < len(h3_matches) else len(section_content)
+                end = (
+                    h3_matches[i + 1].start()
+                    if i + 1 < len(h3_matches)
+                    else len(section_content)
+                )
                 body = section_content[start:end].strip()
 
                 if i == 0:

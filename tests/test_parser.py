@@ -50,7 +50,9 @@ def test_parse_document_with_frontmatter(sample_doc_path: Path) -> None:
 def test_parse_document_without_frontmatter(tmp_path: Path) -> None:
     """Test parsing document without frontmatter (use fallbacks)."""
     doc_path = tmp_path / "no-frontmatter.md"
-    doc_path.write_text("# My Document\n\nThis is the first paragraph.", encoding="utf-8")
+    doc_path.write_text(
+        "# My Document\n\nThis is the first paragraph.", encoding="utf-8"
+    )
 
     parser = DocumentParser()
     doc = parser.parse(doc_path, base_dir=tmp_path)
@@ -87,7 +89,9 @@ def test_load_all_documents(tmp_path: Path) -> None:
     (tmp_path / "doc1.md").write_text("# Doc 1\n\nContent 1", encoding="utf-8")
     (tmp_path / "doc2.md").write_text("# Doc 2\n\nContent 2", encoding="utf-8")
     (tmp_path / "subdir").mkdir()
-    (tmp_path / "subdir" / "doc3.md").write_text("# Doc 3\n\nContent 3", encoding="utf-8")
+    (tmp_path / "subdir" / "doc3.md").write_text(
+        "# Doc 3\n\nContent 3", encoding="utf-8"
+    )
 
     parser = DocumentParser()
     docs = parser.load_all(tmp_path)

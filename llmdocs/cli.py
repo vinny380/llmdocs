@@ -16,7 +16,6 @@ import click
 
 from llmdocs import __version__
 
-
 _DEFAULT_CONFIG = "llmdocs.yaml"
 _DEFAULT_DATA_DIR = ".llmdocs/data"
 
@@ -116,7 +115,9 @@ def init(config_path: str, force: bool) -> None:
     help="Path to llmdocs.yaml.",
 )
 @click.option("--host", default=None, help="Override server host from config.")
-@click.option("--port", default=None, type=int, help="Override server port from config.")
+@click.option(
+    "--port", default=None, type=int, help="Override server port from config."
+)
 @click.option(
     "--data-dir",
     default=_DEFAULT_DATA_DIR,
@@ -138,7 +139,9 @@ def serve(
     cfg = Config.load(_require_config(config_path))
 
     if host or port:
-        overrides = {k: v for k, v in {"host": host, "port": port}.items() if v is not None}
+        overrides = {
+            k: v for k, v in {"host": host, "port": port}.items() if v is not None
+        }
         cfg = cfg.model_copy(update={"server": cfg.server.model_copy(update=overrides)})
 
     data = Path(data_dir)
@@ -153,7 +156,8 @@ def _index_docs(cfg: "Config", data: Path) -> tuple[int, int, int]:
 
     Returns (added, changed, deleted) counts.
     """
-    from llmdocs.indexing import DocumentChunker, DocumentIndexer, DocumentParser, FileHasher
+    from llmdocs.indexing import (DocumentChunker, DocumentIndexer,
+                                  DocumentParser, FileHasher)
     from llmdocs.llms_txt import generate_llms_txt
     from llmdocs.models import Chunk as ChunkModel
 
@@ -321,7 +325,9 @@ def watch(config_path: str, data_dir: str) -> None:
     show_default=True,
     help="Directory for ChromaDB index storage.",
 )
-@click.option("--limit", default=5, show_default=True, help="Maximum results to return.")
+@click.option(
+    "--limit", default=5, show_default=True, help="Maximum results to return."
+)
 def search_cmd(query: str, config_path: str, data_dir: str, limit: int) -> None:
     """Search the docs index from the terminal."""
     from llmdocs.config import Config
