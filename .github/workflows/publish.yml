@@ -62,8 +62,8 @@ jobs:
           context: .
           push: true
           tags: |
-            vinny2prg/llmdocs:${{ steps.version.outputs.version }}
-            vinny2prg/llmdocs:latest
+            vinny2prg/llmdocs-mcp:${{ steps.version.outputs.version }}
+            vinny2prg/llmdocs-mcp:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -72,4 +72,4 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: vinny2prg/llmdocs
+          repository: vinny2prg/llmdocs-mcp
