@@ -1,0 +1,13 @@
+docs_dir: ./docs
+server:
+  host: 0.0.0.0
+  port: 8765
+search:
+  semantic_weight: 0.7
+  keyword_weight: 0.3
+  chunk_size: 500
+embeddings:
+  model: sentence-transformers/all-MiniLM-L6-v2
+llms_txt:
+  output_path: ./llms.txt
+  manual_override: null
