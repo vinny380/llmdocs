@@ -5,12 +5,22 @@ Agent-first documentation platform — self-hosted, MCP-native, no external vect
 - **MCP tools** via Streamable HTTP (`/mcp`) for AI agents and IDEs
 - **Hybrid search** — Chroma semantic + BM25 keyword fusion
 - **Raw markdown URLs** — `GET /guide.md` returns clean content, no frontmatter
-- **`llms.txt`** generation (coming soon)
+- **`llms.txt`** — generated on `llmdocs build` and served at `GET /llms.txt`
 - **Embedded Chroma** — no external vector DB needed
 
 ---
 
 ## Quickstart (CLI)
+
+From [PyPI](https://pypi.org/project/llmdocs-mcp/):
+
+```bash
+pip install llmdocs-mcp
+llmdocs init
+llmdocs serve
+```
+
+From a git checkout:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -41,14 +51,14 @@ pytest
 |-------|-------------|
 | `GET /` | JSON metadata and endpoint index |
 | `GET /health` | `{"status": "healthy"}` |
-| `POST /mcp` | Streamable HTTP MCP endpoint (FastMCP) |
+| `POST /mcp/` | Streamable HTTP MCP endpoint (FastMCP; **use a trailing slash** for MCP clients) |
 | `GET /<path>.md` | Raw markdown body, no frontmatter |
 
 ---
 
 ## MCP tools
 
-Connect any MCP-compatible client (Cursor, Claude, etc.) to `http://localhost:8080/mcp`.
+Connect any MCP-compatible client (Cursor, Claude, etc.) to `http://localhost:8080/mcp/` (trailing slash required for Streamable HTTP routing).
 
 | Tool | Description |
 |------|-------------|
@@ -85,7 +95,16 @@ llmdocs/
 
 ## Docker
 
-The production image installs `requirements.txt` then `pip install .`. A `Dockerfile` and `docker-compose.yml` will be added in a later task.
+Image: [`vinny2prg/llmdocs-mcp`](https://hub.docker.com/r/vinny2prg/llmdocs-mcp) on Docker Hub.
+
+```bash
+docker run --rm -p 8080:8080 \
+  -v "$(pwd)/docs:/docs:ro" \
+  -v llmdocs_data:/data \
+  vinny2prg/llmdocs-mcp:latest
+```
+
+Or use `docker-compose.yml` in this repo (mount `./docs`, persistent `/data` for Chroma + `llms.txt`). The image ships a default `llmdocs.yaml` under `/app`; override with `-e LLMDOCS_CONFIG=...` or mount your own config.
 
 ---
 
