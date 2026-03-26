@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, List, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
+
+from llmdocs.doc_paths import resolve_doc_path
 
 router = APIRouter(prefix="/mcp", tags=["mcp"])
 
@@ -56,30 +57,6 @@ class ListDocsResponse(BaseModel):
     documents: List[ListDocItem]
 
 
-def _resolve_doc_path(docs_root: Path, url_path: str) -> Path:
-    raw = url_path.strip()
-    if not raw.startswith("/"):
-        raw = "/" + raw
-    rel = raw.lstrip("/")
-    if not rel or any(p == ".." for p in rel.split("/")):
-        raise HTTPException(status_code=400, detail="Invalid document path")
-
-    candidate = (docs_root / rel).resolve()
-    base = docs_root.resolve()
-    try:
-        candidate.relative_to(base)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=400, detail="Path outside docs directory"
-        ) from e
-
-    if not candidate.is_file():
-        raise HTTPException(status_code=404, detail="Document not found")
-    if candidate.suffix.lower() != ".md":
-        raise HTTPException(status_code=400, detail="Not a markdown file")
-    return candidate
-
-
 @router.post("/search_docs", response_model=SearchDocsResponse)
 async def search_docs(body: SearchDocsRequest, request: Request) -> SearchDocsResponse:
     """Hybrid search over indexed chunks (semantic + keyword)."""
@@ -104,7 +81,7 @@ async def get_doc(body: GetDocRequest, request: Request) -> GetDocResponse:
     """Return full document body (no frontmatter) and metadata."""
     config = request.app.state.config
     parser = request.app.state.parser
-    path = _resolve_doc_path(config.docs_dir, body.path)
+    path = resolve_doc_path(config.docs_dir, body.path)
     doc = parser.parse(path, base_dir=config.docs_dir)
     return GetDocResponse(
         title=doc.title,

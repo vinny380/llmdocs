@@ -7,13 +7,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import PlainTextResponse, Response
 
 from llmdocs.models import Chunk
 
 from llmdocs import __version__
 from llmdocs.chunker import DocumentChunker
 from llmdocs.config import Config
+from llmdocs.doc_paths import resolve_doc_path
 from llmdocs.hasher import FileHasher
 from llmdocs.indexer import DocumentIndexer
 from llmdocs.parser import DocumentParser
@@ -106,7 +108,7 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
             "endpoints": {
                 "health": "/health",
                 "mcp_tools": "/mcp/*",
-                "raw_markdown": "/<path:path>.md",
+                "raw_markdown": "GET /<path>.md (body without frontmatter)",
                 "llms_txt": "/llms.txt",
                 "docs": "/docs",
             },
@@ -117,6 +119,22 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
         return {"status": "healthy", "version": __version__}
 
     app.include_router(mcp_router)
+
+    @app.get("/{path:path}")
+    async def raw_markdown(path: str, request: Request) -> Response:
+        """Serve markdown body only (no YAML frontmatter) at stable URL paths."""
+        if not path.endswith(".md"):
+            raise HTTPException(status_code=404, detail="Not found")
+
+        config = request.app.state.config
+        parser = request.app.state.parser
+        url_path = path if path.startswith("/") else f"/{path}"
+        fs_path = resolve_doc_path(config.docs_dir, url_path)
+        doc = parser.parse(fs_path, base_dir=config.docs_dir)
+        return PlainTextResponse(
+            content=doc.content,
+            media_type="text/markdown; charset=utf-8",
+        )
 
     return app
 
