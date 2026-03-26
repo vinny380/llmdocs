@@ -55,6 +55,7 @@ def test_config(tmp_path: Path, sample_docs_dir: Path) -> Config:
 
 @pytest.fixture
 def test_client(test_config: Config, tmp_path: Path) -> TestClient:
-    """Create test client (runs startup lifespan: indexing + embedding model load)."""
+    """Create test client; context manager runs ASGI lifespan so app.state is set."""
     app = create_app(config=test_config, data_dir=tmp_path / "data")
-    return TestClient(app)
+    with TestClient(app) as client:
+        yield client

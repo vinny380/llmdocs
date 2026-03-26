@@ -73,7 +73,8 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 | `llmdocs/indexer.py` | Chroma persistent store + `sentence-transformers` embeddings. |
 | `llmdocs/search.py` | `HybridSearchEngine`: Chroma semantic + BM25, `rebuild_index`. |
 | `llmdocs/server.py` | FastAPI app, lifespan startup indexing, `/`, `/health`. |
-| Future | `mcp`, `llms.txt`, full CLI, Docker, CI. |
+| `llmdocs/mcp.py` | JSON routes: `POST /mcp/search_docs`, `get_doc`, `list_docs`. |
+| Future | Raw markdown, `llms.txt`, full CLI, Docker, CI. |
 
 Follow the implementation plan in Bossa Memory / project docs when choosing task order and filenames, but **this repo and tests are the source of truth** if anything diverges.
 

@@ -17,6 +17,7 @@ from llmdocs.config import Config
 from llmdocs.hasher import FileHasher
 from llmdocs.indexer import DocumentIndexer
 from llmdocs.parser import DocumentParser
+from llmdocs.mcp import router as mcp_router
 from llmdocs.search import HybridSearchEngine
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,8 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "healthy", "version": __version__}
+
+    app.include_router(mcp_router)
 
     return app
 
