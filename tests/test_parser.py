@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from llmdocs.parser import DocumentParser
+from llmdocs.indexing import DocumentParser
 
 
 @pytest.fixture

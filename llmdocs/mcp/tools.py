@@ -1,4 +1,4 @@
-"""MCP tool implementations (logic only; wiring in ``llmdocs.mcp_wiring``)."""
+"""MCP tool logic — pure functions called by the registered FastMCP tools."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from fastmcp.exceptions import ToolError
 
 from llmdocs.doc_paths import resolve_doc_path
-from llmdocs.mcp_runtime import LlmdocsRuntime
+from llmdocs.mcp.runtime import LlmdocsRuntime
 
 
 def _tool_error_from_http(exc: HTTPException) -> ToolError:
@@ -17,9 +17,7 @@ def _tool_error_from_http(exc: HTTPException) -> ToolError:
     return ToolError(msg)
 
 
-def tool_search_docs(
-    runtime: LlmdocsRuntime, query: str, limit: int = 5
-) -> Dict[str, Any]:
+def tool_search_docs(runtime: LlmdocsRuntime, query: str, limit: int = 5) -> Dict[str, Any]:
     """Hybrid search over indexed chunks (semantic + keyword)."""
     if runtime.search_engine is None:
         raise ToolError("Search engine not initialized")

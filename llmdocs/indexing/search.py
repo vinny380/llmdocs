@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 import numpy as np
 from rank_bm25 import BM25Okapi
 
-from llmdocs.indexer import DocumentIndexer
+from llmdocs.indexing.indexer import DocumentIndexer
 from llmdocs.models import SearchResult
 
 logger = logging.getLogger(__name__)

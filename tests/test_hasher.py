@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from llmdocs.hasher import FileHasher
+from llmdocs.indexing import FileHasher
 
 
 def test_hash_file(tmp_path: Path) -> None:

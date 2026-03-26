@@ -4,9 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from llmdocs.indexer import DocumentIndexer
+from llmdocs.indexing import DocumentIndexer, HybridSearchEngine
 from llmdocs.models import Chunk
-from llmdocs.search import HybridSearchEngine
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 import pytest
 
-from llmdocs.chunker import DocumentChunker
+from llmdocs.indexing import DocumentChunker
 from llmdocs.models import Document, DocumentMetadata
 
 

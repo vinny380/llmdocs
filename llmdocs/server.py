@@ -8,19 +8,16 @@ from pathlib import Path
 from typing import AsyncIterator, List
 
 from fastapi import FastAPI, HTTPException, Request
+from fastmcp.utilities.lifespan import combine_lifespans
 from fastapi.responses import PlainTextResponse, Response
 
-from llmdocs.models import Chunk
-
 from llmdocs import __version__
-from llmdocs.chunker import DocumentChunker
 from llmdocs.config import Config
 from llmdocs.doc_paths import resolve_doc_path
-from llmdocs.hasher import FileHasher
-from llmdocs.indexer import DocumentIndexer
-from llmdocs.parser import DocumentParser
-from llmdocs.mcp import LlmdocsRuntime, create_mcp_server
-from llmdocs.search import HybridSearchEngine
+from llmdocs.indexing import DocumentChunker, DocumentIndexer, DocumentParser, FileHasher, HybridSearchEngine
+from llmdocs.llms_txt import generate_llms_txt, load_llms_txt
+from llmdocs.mcp import mcp as mcp_server, runtime as mcp_runtime
+from llmdocs.models import Chunk
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +25,6 @@ logger = logging.getLogger(__name__)
 def create_app(config: Config, data_dir: Path) -> FastAPI:
     """Create FastAPI app with startup indexing and health routes."""
 
-    runtime = LlmdocsRuntime()
-    mcp_server = create_mcp_server(runtime)
     mcp_app = mcp_server.http_app(path="/")
 
     parser = DocumentParser()
@@ -94,25 +89,19 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
         app.state.config = config
         app.state.mcp = mcp_server
 
-        runtime.search_engine = search_engine
-        runtime.parser = parser
-        runtime.config = config
+        mcp_runtime.search_engine = search_engine
+        mcp_runtime.parser = parser
+        mcp_runtime.config = config
 
         logger.info("Server ready at http://%s:%s", config.server.host, config.server.port)
 
         yield
 
-    @asynccontextmanager
-    async def combined_lifespan(app: FastAPI) -> AsyncIterator[None]:
-        async with indexing_lifespan(app):
-            async with mcp_app.lifespan(app):
-                yield
-
     app = FastAPI(
         title="llmdocs",
         description="Agent-first documentation platform",
         version=__version__,
-        lifespan=combined_lifespan,
+        lifespan=combine_lifespans(indexing_lifespan, mcp_app.lifespan),
     )
 
     @app.get("/")
@@ -135,6 +124,19 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
         return {"status": "healthy", "version": __version__}
 
     app.mount("/mcp", mcp_app)
+
+    @app.get("/llms.txt")
+    async def llms_txt_endpoint(request: Request) -> Response:
+        """Serve llms.txt — manual override if configured, otherwise auto-generated."""
+        cfg = request.app.state.config
+        override = load_llms_txt(cfg.llms_txt.manual_override)
+        if override is not None:
+            return PlainTextResponse(content=override, media_type="text/plain; charset=utf-8")
+        docs = request.app.state.parser.load_all(cfg.docs_dir)
+        return PlainTextResponse(
+            content=generate_llms_txt(docs),
+            media_type="text/plain; charset=utf-8",
+        )
 
     @app.get("/{path:path}")
     async def raw_markdown(path: str, request: Request) -> Response:

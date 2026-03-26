@@ -15,8 +15,8 @@ This file tells future agents **what this project is**, **how to work on it**, a
 ## User-facing surface (critical)
 
 - After `pip install llmdocs`, users interact only via the **`llmdocs` CLI** (`[project.scripts]` → `llmdocs.cli:cli`).
-- The Python package is **not** a supported public SDK. Do **not** turn `llmdocs/__init__.py` into a barrel of public exports for application code. Internal modules (`config`, `models`, future `server`, `indexer`, etc.) are implementation details.
-- **Docker** should run the same code path as the CLI (e.g. container entrypoint eventually calls `llmdocs serve` or equivalent). Do not fork “Docker-only” behavior unless unavoidable; share logic inside the package.
+- The Python package is **not** a supported public SDK. Do **not** turn `llmdocs/__init__.py` into a barrel of public exports for application code. Internal modules are implementation details.
+- **Docker** should run the same code path as the CLI (e.g. container entrypoint eventually calls `llmdocs serve`). Do not fork "Docker-only" behavior unless unavoidable; share logic inside the package.
 
 ---
 
@@ -49,7 +49,7 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 
 ## Git
 
-- **This repository is rooted in this directory** (`Projects/llmdocs`). Do not assume the parent folder’s Git state applies here.
+- **This repository is rooted in this directory** (`Projects/llmdocs`). Do not assume the parent folder's Git state applies here.
 - Use **clear, conventional commits** (e.g. `feat:`, `fix:`, `test:`, `docs:`) and keep changes scoped to the task.
 
 ---
@@ -58,31 +58,41 @@ When you add or bump dependencies, **refresh locked files** (`requirements.txt` 
 
 - **Match existing style**: imports, typing, Pydantic v2 patterns (`model_validator`, `field_validator`, `ConfigDict` — not legacy `class Config`).
 - **Minimal diffs:** change only what the task requires; no drive-by refactors or unrelated files.
-- **Errors:** align with the product spec where present — graceful handling of bad frontmatter, don’t crash the server on Chroma errors (503-style behavior when implemented), etc.
+- **Errors:** align with the product spec where present — graceful handling of bad frontmatter, don't crash the server on Chroma errors (503-style behavior when implemented), etc.
 
 ---
 
 ## Architecture map (living)
 
-| Area | Notes |
-|------|--------|
-| `llmdocs/cli.py` | Click commands; user entry. |
-| `llmdocs/config.py` | `llmdocs.yaml` loading. |
-| `llmdocs/models.py` | Documents, chunks, search results — internal types. |
-| `llmdocs/parser.py` | Frontmatter + markdown loading; fallbacks for bad YAML. |
-| `llmdocs/chunker.py` | H2/H3 chunking, tiktoken limits. |
-| `llmdocs/hasher.py` | SHA-256 per file; incremental diff maps. |
-| `llmdocs/indexer.py` | Chroma persistent store + `sentence-transformers` embeddings. |
-| `llmdocs/search.py` | `HybridSearchEngine`: Chroma semantic + BM25, `rebuild_index`. |
-| `llmdocs/server.py` | FastAPI app, lifespan startup indexing, `/`, `/health`, mounts FastMCP at `/mcp`. |
-| `llmdocs/mcp.py` | `create_mcp_server()` — registers FastMCP tools. |
-| `llmdocs/mcp_runtime.py` | `LlmdocsRuntime` (search engine, parser, config) for tools + lifespan. |
-| `llmdocs/mcp_tools.py` | Tool **implementations** (`tool_search_docs`, etc.). |
-| `llmdocs/mcp_wiring.py` | Thin callables that bind runtime (FastMCP needs real functions, not `partial`). |
-| `llmdocs/doc_paths.py` | Safe URL → filesystem resolution for docs. |
-| Future | `llms.txt`, full CLI, Docker, CI. |
+```
+llmdocs/
+  __init__.py         Version constant; not a public API barrel.
+  cli.py              Click commands; user entry point.
+  config.py           llmdocs.yaml loading (Pydantic v2).
+  models.py           Internal types: Document, Chunk, SearchResult.
+  doc_paths.py        Safe URL → filesystem path resolution (used by server + MCP tools).
+  server.py           FastAPI app: lifespan indexing, /, /health, /mcp mount, /*.md.
 
-Follow the implementation plan in Bossa Memory / project docs when choosing task order and filenames, but **this repo and tests are the source of truth** if anything diverges.
+  indexing/           Indexing pipeline subpackage.
+    __init__.py       Re-exports all five public classes.
+    parser.py         Frontmatter + markdown loading; bad-YAML fallbacks.
+    chunker.py        H2/H3 section chunking with tiktoken size limits.
+    hasher.py         SHA-256 per file; incremental diff maps.
+    indexer.py        Chroma persistent store + sentence-transformers embeddings.
+    search.py         HybridSearchEngine: Chroma semantic + BM25 keyword fusion.
+
+  mcp/                MCP subpackage (FastMCP, Streamable HTTP at /mcp).
+    __init__.py       Module-level `mcp` + `runtime` singletons; @mcp.tool registrations.
+    runtime.py        LlmdocsRuntime dataclass (search_engine, parser, config).
+    tools.py          Pure-function tool implementations (search, get, list).
+```
+
+**Data flow:**
+1. `server.py` lifespan → runs the indexing pipeline (`indexing.*`), builds `HybridSearchEngine`, fills `mcp.runtime` fields.
+2. FastMCP mounts at `/mcp`; each tool call injects `runtime` via `Depends(_get_runtime)`.
+3. Tool functions in `mcp/tools.py` read from `runtime` and return dicts that FastMCP serialises.
+
+Follow the implementation plan in Bossa Memory / project docs when choosing task order, but **this repo and tests are the source of truth** if anything diverges.
 
 ---
 

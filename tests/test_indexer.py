@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from llmdocs.indexer import DocumentIndexer
+from llmdocs.indexing import DocumentIndexer
 from llmdocs.models import Chunk
 
 
