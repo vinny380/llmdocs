@@ -12,7 +12,7 @@
     <strong>🐳 <a href="https://hub.docker.com/r/vinny2prg/llmdocs-mcp">Docker Hub</a></strong>
   </p>
   <p align="center">
-    <code>pip install llmdocs-mcp</code> · Python 3.12+ · Embedded Chroma + local embeddings
+    <code>pip install llmdocs-mcp</code> · Python 3.12+ · Embedded Chroma · Local or OpenAI-compatible embeddings
   </p>
   <p align="center">
     <strong>Agents:</strong> add hosted docs MCP →
@@ -50,7 +50,7 @@ Paste links into chat and hope for the best? Copy whole folders into context? Th
 | **Semantic + keyword** fusion | Embeddings only, or keywords only |
 | **Stable URLs** — `GET /guide.md` raw body | Screenshots or broken links |
 | **MCP** at `/mcp/` (Streamable HTTP) | No standard tool surface |
-| **Self-hosted**, embedded Chroma | Another vendor’s vector bill |
+| **Self-hosted**, local or API embeddings | Another vendor’s vector bill |
 
 ---
 
@@ -61,7 +61,7 @@ Paste links into chat and hope for the best? Copy whole folders into context? Th
 | Step | Action |
 |------|--------|
 | 1 | `pip install llmdocs-mcp` |
-| 2 | `llmdocs init` — creates `llmdocs.yaml` and a sample `docs/` |
+| 2 | `llmdocs init` — detects an existing `docs/` (or `doc/`, `documentation/`) and generates `llmdocs.yaml`. Creates a sample `docs/index.md` only if no docs folder is found. Use `--docs-dir PATH` to point at a specific folder. |
 | 3 | `llmdocs build` — index for search + MCP |
 | 4 | `llmdocs serve` — HTTP + MCP (use `llmdocs watch` in another terminal for auto-rebuild on save) |
 
@@ -100,7 +100,7 @@ pytest
 - **`llms.txt`** — Generated on `llmdocs build` and served at `GET /llms.txt`.
 - **CLI** — `init`, `serve`, `build`, `validate`, `search`, `watch`, and more.
 
-Default embedding model: `sentence-transformers/all-MiniLM-L6-v2` (configurable in `llmdocs.yaml`).
+Default embedding model: `sentence-transformers/all-MiniLM-L6-v2` (local, no API key needed). Switch to **OpenAI**, **Azure OpenAI**, or any **OpenAI-compatible proxy** (LiteLLM, vLLM) by setting `embeddings.provider: openai` in `llmdocs.yaml` — see [Configuration](https://github.com/vinny380/llmdocs/blob/main/docs/guides/configuration.md#embeddings).
 
 ---
 
@@ -108,7 +108,7 @@ Default embedding model: `sentence-transformers/all-MiniLM-L6-v2` (configurable 
 
 ```bash
 llmdocs --version
-llmdocs init [--config llmdocs.yaml] [--force]
+llmdocs init [--config llmdocs.yaml] [--docs-dir PATH] [--force]
 llmdocs build --config llmdocs.yaml
 llmdocs serve --config llmdocs.yaml [--host HOST] [--port PORT]
 llmdocs validate --config llmdocs.yaml

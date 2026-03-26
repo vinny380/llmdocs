@@ -12,11 +12,12 @@ Invoke **`llmdocs`** after installation (`pip install llmdocs-mcp`). Global opti
 
 ## `llmdocs init`
 
-Creates `llmdocs.yaml` and `docs/index.md` if missing.
+Generates `llmdocs.yaml` and scaffolds a docs directory. If an existing `docs/`, `doc/`, or `documentation/` folder with markdown files is found, it is used automatically — no sample `index.md` is created, and your content is preserved. If no docs folder exists, `docs/index.md` is scaffolded as a starting point.
 
 | Option | Meaning |
 |--------|---------|
 | `--config PATH` | Where to write config (default `llmdocs.yaml`). |
+| `--docs-dir PATH` | Use this directory as `docs_dir` (overrides auto-detection). |
 | `--force` | Overwrite existing files. |
 
 ## `llmdocs serve`

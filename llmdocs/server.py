@@ -34,7 +34,7 @@ def create_app(config: Config, data_dir: Path) -> FastAPI:
     hasher = FileHasher()
     indexer = DocumentIndexer(
         data_dir=data_dir,
-        embedding_model=config.embeddings.model,
+        embeddings_config=config.embeddings,
     )
 
     @asynccontextmanager

@@ -9,6 +9,7 @@ search:
   keyword_weight: 0.3
   chunk_size: 500
 embeddings:
+  provider: local
   model: sentence-transformers/all-MiniLM-L6-v2
 llms_txt:
   output_path: /data/llms.txt

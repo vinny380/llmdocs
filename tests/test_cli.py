@@ -98,6 +98,67 @@ def test_init_shows_next_steps(runner: CliRunner, tmp_path: Path) -> None:
     assert "validate" in result.output
 
 
+def test_init_detects_existing_docs_folder(runner: CliRunner, tmp_path: Path) -> None:
+    """Existing docs/ with .md files is detected; index.md is NOT overwritten."""
+    with runner.isolated_filesystem(temp_dir=tmp_path) as fs:
+        docs = Path(fs) / "docs"
+        docs.mkdir()
+        (docs / "guide.md").write_text("# Guide\n", encoding="utf-8")
+        result = runner.invoke(cli, ["init"])
+        assert result.exit_code == 0, result.output
+        assert "found" in result.output
+        assert "1 markdown file" in result.output
+        cfg_text = (Path(fs) / "llmdocs.yaml").read_text(encoding="utf-8")
+        assert "docs_dir: ./docs" in cfg_text
+        assert not (docs / "index.md").exists()
+
+
+def test_init_detects_doc_folder(runner: CliRunner, tmp_path: Path) -> None:
+    """doc/ (without the 's') is detected as a candidate."""
+    with runner.isolated_filesystem(temp_dir=tmp_path) as fs:
+        docs = Path(fs) / "doc"
+        docs.mkdir()
+        (docs / "readme.md").write_text("# Readme\n", encoding="utf-8")
+        result = runner.invoke(cli, ["init"])
+        assert result.exit_code == 0, result.output
+        assert "found" in result.output
+        cfg_text = (Path(fs) / "llmdocs.yaml").read_text(encoding="utf-8")
+        assert "docs_dir: ./doc" in cfg_text
+
+
+def test_init_docs_dir_flag_overrides_detection(
+    runner: CliRunner, tmp_path: Path
+) -> None:
+    """--docs-dir overrides auto-detection."""
+    with runner.isolated_filesystem(temp_dir=tmp_path) as fs:
+        custom = Path(fs) / "my-docs"
+        custom.mkdir()
+        (custom / "page.md").write_text("# Page\n", encoding="utf-8")
+        result = runner.invoke(cli, ["init", "--docs-dir", "my-docs"])
+        assert result.exit_code == 0, result.output
+        cfg_text = (Path(fs) / "llmdocs.yaml").read_text(encoding="utf-8")
+        assert "docs_dir: ./my-docs" in cfg_text
+        assert "existing docs preserved" in result.output
+
+
+def test_init_creates_docs_when_none_found(runner: CliRunner, tmp_path: Path) -> None:
+    """With no existing docs folder, init scaffolds docs/ + index.md."""
+    with runner.isolated_filesystem(temp_dir=tmp_path) as fs:
+        result = runner.invoke(cli, ["init"])
+        assert result.exit_code == 0, result.output
+        assert (Path(fs) / "docs" / "index.md").exists()
+        assert "create" in result.output
+
+
+def test_init_empty_docs_dir_still_scaffolds(runner: CliRunner, tmp_path: Path) -> None:
+    """An existing docs/ with zero .md files is treated as empty (scaffold)."""
+    with runner.isolated_filesystem(temp_dir=tmp_path) as fs:
+        (Path(fs) / "docs").mkdir()
+        result = runner.invoke(cli, ["init"])
+        assert result.exit_code == 0, result.output
+        assert (Path(fs) / "docs" / "index.md").exists()
+
+
 # ── serve ──────────────────────────────────────────────────────────────────
 
 

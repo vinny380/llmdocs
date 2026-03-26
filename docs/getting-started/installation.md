@@ -11,7 +11,8 @@ tags: [install, pip, docker, pypi]
 ## Requirements
 
 - **Python 3.12 or newer** (see `requires-python` in `pyproject.toml`).
-- Enough disk space for the **embedding model** cache (Hugging Face) and **ChromaDB** data — typically hundreds of MB depending on corpus size.
+- **Embeddings:** by default, llmdocs uses a local sentence-transformers model (downloaded from Hugging Face on first run, ~100 MB). If you prefer an **external provider** (OpenAI, Azure OpenAI, LiteLLM), set `embeddings.provider: openai` in your config — no local model download needed. See [Configuration — embeddings](../guides/configuration.md#embeddings).
+- Enough disk space for **ChromaDB** data — typically tens to hundreds of MB depending on corpus size.
 
 ## From PyPI (recommended)
 

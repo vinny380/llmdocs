@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+import os
+import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import yaml
 from pydantic import BaseModel, field_validator, model_validator
+
+
+_ENV_VAR_RE = re.compile(r"\$\{([^}]+)\}")
+
+
+def _resolve_env_vars(value: str | None) -> str | None:
+    """Expand ``${VAR}`` references in *value* from the environment."""
+    if value is None:
+        return None
+    return _ENV_VAR_RE.sub(lambda m: os.environ.get(m.group(1), ""), value)
 
 
 class Config(BaseModel):
@@ -36,9 +48,31 @@ class Config(BaseModel):
             return self
 
     class EmbeddingsConfig(BaseModel):
-        """Embeddings configuration."""
+        """Embeddings configuration.
 
+        ``provider`` selects the embedding backend:
+        - ``"local"`` (default): sentence-transformers; no network calls.
+        - ``"openai"``: any OpenAI-compatible API (OpenAI, Azure, LiteLLM, etc.).
+        """
+
+        provider: Literal["local", "openai"] = "local"
         model: str = "sentence-transformers/all-MiniLM-L6-v2"
+        api_key: Optional[str] = None
+        base_url: Optional[str] = None
+
+        @model_validator(mode="after")
+        def validate_provider_fields(self) -> EmbeddingsConfig:
+            if self.provider == "openai":
+                resolved = _resolve_env_vars(self.api_key)
+                if not resolved:
+                    raise ValueError(
+                        "embeddings.api_key is required when provider is 'openai'"
+                    )
+            return self
+
+        def resolved_api_key(self) -> str | None:
+            """Return api_key with ``${VAR}`` references expanded."""
+            return _resolve_env_vars(self.api_key)
 
     class LlmsTxtConfig(BaseModel):
         """llms.txt generation configuration."""

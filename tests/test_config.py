@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from llmdocs.config import Config
+from llmdocs.config import Config, _resolve_env_vars
 
 
 def test_load_config_from_file(tmp_path: Path) -> None:
@@ -94,3 +94,71 @@ def test_config_validation_weights_must_sum_to_one() -> None:
                 keyword_weight=0.3,
             )
         )
+
+
+# ── embeddings config ─────────────────────────────────────────────────────
+
+
+def test_embeddings_config_defaults() -> None:
+    cfg = Config.EmbeddingsConfig()
+    assert cfg.provider == "local"
+    assert cfg.model == "sentence-transformers/all-MiniLM-L6-v2"
+    assert cfg.api_key is None
+    assert cfg.base_url is None
+
+
+def test_embeddings_config_openai_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="api_key is required"):
+        Config.EmbeddingsConfig(provider="openai", model="text-embedding-3-small")
+
+
+def test_embeddings_config_openai_with_literal_key() -> None:
+    cfg = Config.EmbeddingsConfig(
+        provider="openai", model="text-embedding-3-small", api_key="sk-test123"
+    )
+    assert cfg.resolved_api_key() == "sk-test123"
+
+
+def test_embeddings_config_env_var_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MY_KEY", "secret-from-env")
+    cfg = Config.EmbeddingsConfig(
+        provider="openai", model="text-embedding-3-small", api_key="${MY_KEY}"
+    )
+    assert cfg.resolved_api_key() == "secret-from-env"
+
+
+def test_embeddings_config_local_ignores_extra_fields() -> None:
+    """local provider does not error when api_key / base_url are present."""
+    cfg = Config.EmbeddingsConfig(
+        provider="local", api_key="unused", base_url="http://unused"
+    )
+    assert cfg.provider == "local"
+
+
+def test_resolve_env_vars_helper(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("A", "hello")
+    monkeypatch.setenv("B", "world")
+    assert _resolve_env_vars("${A}-${B}") == "hello-world"
+    assert _resolve_env_vars(None) is None
+    assert _resolve_env_vars("literal") == "literal"
+
+
+def test_load_config_with_openai_embeddings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TEST_KEY", "sk-test")
+    config_file = tmp_path / "llmdocs.yaml"
+    config_file.write_text(
+        "embeddings:\n"
+        "  provider: openai\n"
+        "  model: text-embedding-3-small\n"
+        "  api_key: ${TEST_KEY}\n"
+        "  base_url: http://localhost:4000\n",
+        encoding="utf-8",
+    )
+    config = Config.load(config_file)
+    assert config.embeddings.provider == "openai"
+    assert config.embeddings.model == "text-embedding-3-small"
+    assert config.embeddings.resolved_api_key() == "sk-test"
+    assert config.embeddings.base_url == "http://localhost:4000"

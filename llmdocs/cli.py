@@ -19,8 +19,12 @@ from llmdocs import __version__
 _DEFAULT_CONFIG = "llmdocs.yaml"
 _DEFAULT_DATA_DIR = ".llmdocs/data"
 
-_DEFAULT_CONFIG_YAML = """\
-docs_dir: ./docs
+_CANDIDATE_DOC_DIRS = ("docs", "doc", "documentation")
+
+
+def _make_config_yaml(docs_dir: str = "./docs") -> str:
+    return f"""\
+docs_dir: {docs_dir}
 server:
   host: 0.0.0.0
   port: 8080
@@ -29,6 +33,7 @@ search:
   keyword_weight: 0.3
   chunk_size: 500
 embeddings:
+  provider: local
   model: sentence-transformers/all-MiniLM-L6-v2
 llms_txt:
   output_path: ./llms.txt
@@ -72,6 +77,21 @@ def version_cmd() -> None:
     click.echo(__version__)
 
 
+def _detect_docs_dir() -> tuple[Path, int] | None:
+    """Find an existing directory with markdown files.
+
+    Returns ``(path, md_count)`` for the first candidate that contains at
+    least one ``.md`` file, or ``None`` if nothing is found.
+    """
+    for name in _CANDIDATE_DOC_DIRS:
+        candidate = Path(name)
+        if candidate.is_dir():
+            md_count = sum(1 for _ in candidate.rglob("*.md"))
+            if md_count > 0:
+                return candidate, md_count
+    return None
+
+
 @cli.command("init")
 @click.option(
     "--config",
@@ -80,26 +100,52 @@ def version_cmd() -> None:
     show_default=True,
     help="Path for the generated config file.",
 )
+@click.option(
+    "--docs-dir",
+    "docs_dir_opt",
+    default=None,
+    help="Path to an existing docs directory (overrides auto-detection).",
+)
 @click.option("--force", is_flag=True, help="Overwrite existing files.")
-def init(config_path: str, force: bool) -> None:
-    """Scaffold llmdocs.yaml and a sample docs/ directory."""
+def init(config_path: str, docs_dir_opt: str | None, force: bool) -> None:
+    """Scaffold llmdocs.yaml, detecting an existing docs directory if present."""
     cfg_path = Path(config_path)
 
+    # --- resolve docs directory -------------------------------------------
+    detected = _detect_docs_dir()
+    if docs_dir_opt is not None:
+        docs_dir = Path(docs_dir_opt)
+        existing = docs_dir.is_dir() and any(docs_dir.rglob("*.md"))
+    elif detected is not None:
+        docs_dir, md_count = detected
+        existing = True
+        click.echo(
+            f"  found  {docs_dir}/ ({md_count} markdown file{'s' if md_count != 1 else ''}) "
+            f"— using as docs_dir"
+        )
+    else:
+        docs_dir = Path("docs")
+        existing = False
+
+    # --- write config file ------------------------------------------------
+    docs_dir_value = f"./{docs_dir}" if not str(docs_dir).startswith("./") else str(docs_dir)
     if cfg_path.exists() and not force:
         click.echo(f"  skip  {cfg_path} (already exists — use --force to overwrite)")
     else:
-        cfg_path.write_text(_DEFAULT_CONFIG_YAML, encoding="utf-8")
+        cfg_path.write_text(_make_config_yaml(docs_dir_value), encoding="utf-8")
         click.echo(f"  create {cfg_path}")
 
-    docs_dir = Path("docs")
-    docs_dir.mkdir(exist_ok=True)
-
-    sample = docs_dir / "index.md"
-    if sample.exists() and not force:
-        click.echo(f"  skip  {sample} (already exists)")
+    # --- scaffold docs directory only when creating fresh -----------------
+    if existing:
+        click.echo(f"  using  {docs_dir}/ (existing docs preserved)")
     else:
-        sample.write_text(_SAMPLE_INDEX_MD, encoding="utf-8")
-        click.echo(f"  create {sample}")
+        docs_dir.mkdir(exist_ok=True)
+        sample = docs_dir / "index.md"
+        if sample.exists() and not force:
+            click.echo(f"  skip  {sample} (already exists)")
+        else:
+            sample.write_text(_SAMPLE_INDEX_MD, encoding="utf-8")
+            click.echo(f"  create {sample}")
 
     click.echo("\nNext steps:")
     click.echo("  llmdocs serve    — start the server")
@@ -164,7 +210,7 @@ def _index_docs(cfg: "Config", data: Path) -> tuple[int, int, int]:
     parser = DocumentParser()
     chunker = DocumentChunker(max_chunk_tokens=cfg.search.chunk_size)
     hasher = FileHasher()
-    indexer = DocumentIndexer(data_dir=data, embedding_model=cfg.embeddings.model)
+    indexer = DocumentIndexer(data_dir=data, embeddings_config=cfg.embeddings)
 
     current_hashes = hasher.hash_directory(cfg.docs_dir)
     stored_hashes = indexer.get_all_hashes()
@@ -337,7 +383,7 @@ def search_cmd(query: str, config_path: str, data_dir: str, limit: int) -> None:
     cfg = Config.load(_require_config(config_path))
     data = Path(data_dir)
 
-    indexer = DocumentIndexer(data_dir=data, embedding_model=cfg.embeddings.model)
+    indexer = DocumentIndexer(data_dir=data, embeddings_config=cfg.embeddings)
     engine = HybridSearchEngine(
         indexer=indexer,
         semantic_weight=cfg.search.semantic_weight,

@@ -10,13 +10,21 @@ tags: [tutorial, first-run, mcp]
 
 This walkthrough assumes you installed **`llmdocs-mcp`** and are in an empty or existing project directory.
 
-## 1. Scaffold config and sample doc
+## 1. Initialize your project
 
 ```bash
 llmdocs init
 ```
 
-This creates `llmdocs.yaml` and `docs/index.md` (skip if you already have them).
+If you already have a `docs/`, `doc/`, or `documentation/` folder with markdown files, `init` **detects it automatically** and uses it as `docs_dir` — your existing content is preserved. If no docs folder is found, it creates `docs/index.md` as a starting point.
+
+You can also point at a specific directory:
+
+```bash
+llmdocs init --docs-dir my-content
+```
+
+Either way, `init` writes an `llmdocs.yaml` config file with sensible defaults.
 
 ## 2. Add or edit markdown
 
@@ -77,8 +85,25 @@ In a second terminal:
 llmdocs watch
 ```
 
+## Embedding providers
+
+By default, llmdocs uses a **local** sentence-transformers model — no API key needed, everything runs on your machine.
+
+If you prefer an external provider (OpenAI, Azure OpenAI, or any OpenAI-compatible proxy like LiteLLM), set it in `llmdocs.yaml`:
+
+```yaml
+embeddings:
+  provider: openai
+  model: text-embedding-3-small
+  api_key: ${OPENAI_API_KEY}
+```
+
+The API key is only needed **server-side** (wherever `llmdocs serve` or `llmdocs build` runs). Clients connecting to your `/mcp/` endpoint never need an API key — the server handles embeddings internally.
+
+See [Configuration — embeddings](../guides/configuration.md#embeddings) for Azure, LiteLLM, and proxy setup.
+
 ## Next steps
 
-- [Configuration](../guides/configuration.md) — tune search weights, paths, model.
-- [CLI reference](../reference/cli.md) — all commands.
+- [Configuration](../guides/configuration.md) — embeddings, search weights, paths.
+- [CLI reference](../reference/cli.md) — all commands and flags.
 - [MCP reference](../reference/mcp.md) — tool behavior and limits.

@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import chromadb
 from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
 
 from llmdocs.models import Chunk
+
+if TYPE_CHECKING:
+    from llmdocs.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +35,19 @@ def _chunk_metadata_for_chroma(chunk: Chunk) -> Dict[str, Any]:
 
 
 class DocumentIndexer:
-    """Manages ChromaDB index for document chunks."""
+    """Manages ChromaDB index for document chunks.
+
+    Accepts either the full ``EmbeddingsConfig`` object **or** the legacy
+    ``embedding_model`` string for backward compatibility.
+    """
 
     def __init__(
         self,
         data_dir: Path,
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         collection_name: str = "llmdocs",
+        *,
+        embeddings_config: Config.EmbeddingsConfig | None = None,
     ) -> None:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -50,13 +58,59 @@ class DocumentIndexer:
             settings=Settings(anonymized_telemetry=False),
         )
 
-        logger.info("Loading embedding model: %s", embedding_model)
-        self.embedding_model = SentenceTransformer(embedding_model)
+        if embeddings_config is not None:
+            self._provider = embeddings_config.provider
+            self._model_name = embeddings_config.model
+            self._api_key = embeddings_config.resolved_api_key()
+            self._base_url = embeddings_config.base_url
+        else:
+            self._provider = "local"
+            self._model_name = embedding_model
+            self._api_key = None
+            self._base_url = None
+
+        self._local_model: Any = None  # lazy SentenceTransformer
+        self._openai_client: Any = None  # lazy openai.OpenAI
+
+        if self._provider == "local":
+            self._init_local()
+        elif self._provider == "openai":
+            self._init_openai()
 
         self.collection = self.client.get_or_create_collection(
             name=collection_name,
             metadata={"description": "llmdocs documentation chunks"},
         )
+
+    # -- provider init (lazy imports) --------------------------------------
+
+    def _init_local(self) -> None:
+        from sentence_transformers import SentenceTransformer
+
+        logger.info("Loading local embedding model: %s", self._model_name)
+        self._local_model = SentenceTransformer(self._model_name)
+
+    def _init_openai(self) -> None:
+        import openai
+
+        logger.info("Using OpenAI-compatible embeddings: %s", self._model_name)
+        kwargs: Dict[str, Any] = {"api_key": self._api_key}
+        if self._base_url:
+            kwargs["base_url"] = self._base_url
+        self._openai_client = openai.OpenAI(**kwargs)
+
+    # -- embedding dispatch ------------------------------------------------
+
+    def _embed(self, texts: List[str]) -> List[List[float]]:
+        """Return embedding vectors for *texts* using the configured provider."""
+        if self._provider == "local":
+            emb = self._local_model.encode(texts, show_progress_bar=False)
+            return emb.tolist() if hasattr(emb, "tolist") else [list(v) for v in emb]
+
+        resp = self._openai_client.embeddings.create(
+            input=texts, model=self._model_name
+        )
+        return [item.embedding for item in resp.data]
 
     def index_chunks(self, chunks: List[Chunk]) -> None:
         """Index a list of chunks (adds to the collection)."""
@@ -64,8 +118,7 @@ class DocumentIndexer:
             return
 
         texts = [c.content for c in chunks]
-        emb = self.embedding_model.encode(texts, show_progress_bar=False)
-        embeddings = emb.tolist() if hasattr(emb, "tolist") else list(emb)
+        embeddings = self._embed(texts)
 
         ids = [c.chunk_id for c in chunks]
         metadatas = [_chunk_metadata_for_chroma(c) for c in chunks]
@@ -81,8 +134,7 @@ class DocumentIndexer:
 
     def semantic_search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Dense-vector search over indexed chunks."""
-        qe = self.embedding_model.encode([query], show_progress_bar=False)
-        query_embedding = qe.tolist()[0] if hasattr(qe, "tolist") else list(qe[0])
+        query_embedding = self._embed([query])[0]
 
         results = self.collection.query(
             query_embeddings=[query_embedding],

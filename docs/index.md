@@ -14,7 +14,7 @@ tags: [overview, introduction, open-source]
 
 - **Teams** who want docs searchable by **IDEs and agents** (Cursor, Claude, custom MCP clients).
 - **Maintainers** who already write **Markdown + frontmatter** and want **one pipeline** for indexing and HTTP serving.
-- **Self-hosters** who prefer **embedded Chroma** and **local embeddings** (default model: `sentence-transformers/all-MiniLM-L6-v2`).
+- **Self-hosters** who prefer **embedded Chroma** with **local or API-based embeddings** (default: `sentence-transformers/all-MiniLM-L6-v2`; also supports OpenAI, Azure OpenAI, LiteLLM, and any OpenAI-compatible proxy).
 
 ## What you get
 
@@ -30,12 +30,14 @@ tags: [overview, introduction, open-source]
 
 ```bash
 pip install llmdocs-mcp
-llmdocs init
+llmdocs init          # detects existing docs/ folder automatically
 llmdocs build
 llmdocs serve
 ```
 
 PyPI package name is **`llmdocs-mcp`**; the command-line program is **`llmdocs`**. Requires **Python 3.12+**.
+
+Already have a `docs/` folder? `llmdocs init` detects it and uses your existing markdown. No API key needed for local embeddings; set `embeddings.provider: openai` in `llmdocs.yaml` if you prefer an external provider.
 
 ## Use llmdocs in your agents (hosted MCP)
 

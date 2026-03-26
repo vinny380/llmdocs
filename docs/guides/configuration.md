@@ -24,6 +24,7 @@ search:
   keyword_weight: 0.3
   chunk_size: 500
 embeddings:
+  provider: local
   model: sentence-transformers/all-MiniLM-L6-v2
 llms_txt:
   output_path: ./llms.txt
@@ -53,7 +54,53 @@ Root directory for markdown. All `**/*.md` files are loaded **recursively**; URL
 
 | Field | Default | Notes |
 |-------|---------|--------|
-| `model` | `sentence-transformers/all-MiniLM-L6-v2` | Sentence-transformers model id; downloaded on first use. |
+| `provider` | `local` | `"local"` (sentence-transformers) or `"openai"` (any OpenAI-compatible API). |
+| `model` | `sentence-transformers/all-MiniLM-L6-v2` | Model id. For `local`: a Hugging Face model name. For `openai`: e.g. `text-embedding-3-small`. |
+| `api_key` | `null` | Required when `provider: openai`. Supports `${ENV_VAR}` syntax. |
+| `base_url` | `null` | Override the API endpoint (for Azure OpenAI, LiteLLM, or any proxy). |
+
+### Local embeddings (default)
+
+No API key needed. The model is downloaded from Hugging Face on first run:
+
+```yaml
+embeddings:
+  provider: local
+  model: sentence-transformers/all-MiniLM-L6-v2
+```
+
+### OpenAI
+
+```yaml
+embeddings:
+  provider: openai
+  model: text-embedding-3-small
+  api_key: ${OPENAI_API_KEY}
+```
+
+### Azure OpenAI
+
+```yaml
+embeddings:
+  provider: openai
+  model: text-embedding-3-small
+  api_key: ${AZURE_OPENAI_API_KEY}
+  base_url: https://my-resource.openai.azure.com/openai/deployments/my-embedding
+```
+
+### LiteLLM or any OpenAI-compatible proxy
+
+```yaml
+embeddings:
+  provider: openai
+  model: openai/text-embedding-3-small
+  api_key: ${LITELLM_API_KEY}
+  base_url: http://localhost:4000
+```
+
+### Who needs the API key?
+
+Only the machine running `llmdocs serve` or `llmdocs build`. MCP clients (Cursor, Claude, VS Code) connect to your `/mcp/` endpoint and never touch the embedding provider directly — they just send search queries and get results back.
 
 ## `llms_txt`
 
