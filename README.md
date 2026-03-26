@@ -98,6 +98,18 @@ llmdocs/
 
 ---
 
+## Project documentation (this repo)
+
+Long-form docs for users and contributors live under **`docs/`** (Markdown + frontmatter), with config at **`docs/llmdocs.yaml`**. Preview locally:
+
+```bash
+llmdocs serve --config docs/llmdocs.yaml --data-dir .llmdocs/project-docs
+```
+
+Then open `http://127.0.0.1:8090` (see `docs/llmdocs.yaml` for host/port). Run **`llmdocs build --config docs/llmdocs.yaml`** first so search works.
+
+---
+
 ## Docker
 
 Image: [`vinny2prg/llmdocs-mcp`](https://hub.docker.com/r/vinny2prg/llmdocs-mcp) on Docker Hub.

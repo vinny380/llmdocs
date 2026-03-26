@@ -10,6 +10,10 @@ This file tells future agents **what this project is**, **how to work on it**, a
 
 **Not** a hosted SaaS in v1: embedded Chroma, local embeddings, no required external vector API.
 
+### Documentation site (this repository)
+
+User-facing prose for the **llmdocs** project lives in **`docs/`** (Markdown + YAML frontmatter), configured by **`docs/llmdocs.yaml`**. It follows the same conventions as any consumer project so maintainers can **dogfood** the stack: `llmdocs build --config docs/llmdocs.yaml`, then `llmdocs serve --config docs/llmdocs.yaml --data-dir .llmdocs/project-docs`.
+
 ---
 
 ## User-facing surface (critical)
