@@ -2,7 +2,9 @@
 
 Agent-first documentation platform — self-hosted, MCP-native, no external vector API required.
 
-- **MCP tools** via Streamable HTTP (`/mcp`) for AI agents and IDEs
+Install [`llmdocs-mcp`](https://pypi.org/project/llmdocs-mcp/) from PyPI; the CLI command is `llmdocs`. Requires **Python 3.12+**.
+
+- **MCP tools** via Streamable HTTP (`/mcp/`) for AI agents and IDEs
 - **Hybrid search** — Chroma semantic + BM25 keyword fusion
 - **Raw markdown URLs** — `GET /guide.md` returns clean content, no frontmatter
 - **`llms.txt`** — generated on `llmdocs build` and served at `GET /llms.txt`
@@ -17,8 +19,11 @@ From [PyPI](https://pypi.org/project/llmdocs-mcp/):
 ```bash
 pip install llmdocs-mcp
 llmdocs init
+llmdocs build
 llmdocs serve
 ```
+
+Run `llmdocs build` at least once so hybrid search and the MCP `search_docs` tool have an indexed corpus (use `llmdocs watch` in another terminal if you want rebuilds on save).
 
 From a git checkout:
 
