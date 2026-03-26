@@ -67,9 +67,29 @@ class Config(BaseModel):
 
     @classmethod
     def load(cls, config_path: Path) -> Config:
-        """Load configuration from YAML file."""
+        """Load configuration from YAML file.
+
+        Relative paths in the config (``docs_dir``, ``llms_txt.output_path``,
+        ``llms_txt.manual_override``) are resolved relative to the directory
+        that contains the config file, not the current working directory.
+        """
         with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         if data is None:
             data = {}
-        return cls(**data)
+        cfg = cls(**data)
+        base = config_path.resolve().parent
+
+        if not cfg.docs_dir.is_absolute():
+            cfg = cfg.model_copy(update={"docs_dir": (base / cfg.docs_dir).resolve()})
+
+        lt = cfg.llms_txt
+        lt_updates: dict = {}
+        if not lt.output_path.is_absolute():
+            lt_updates["output_path"] = (base / lt.output_path).resolve()
+        if lt.manual_override is not None and not lt.manual_override.is_absolute():
+            lt_updates["manual_override"] = (base / lt.manual_override).resolve()
+        if lt_updates:
+            cfg = cfg.model_copy(update={"llms_txt": lt.model_copy(update=lt_updates)})
+
+        return cfg

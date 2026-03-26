@@ -42,5 +42,6 @@ htmlcov/
 .chroma/
 chroma_data/
 
-# llmdocs
+# llmdocs runtime data (ChromaDB index, generated files)
+.llmdocs/
 llms.txt
