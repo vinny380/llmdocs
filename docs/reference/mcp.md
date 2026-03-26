@@ -36,3 +36,7 @@ https://your-host/mcp/
 ## Runtime
 
 Tools use the same **Chroma index** and **parser** as the HTTP server. Rebuild the index (`llmdocs build` or `watch`) after large doc changes.
+
+## Clients
+
+For **Cursor**, **VS Code (Copilot)**, and **Claude Code** configuration examples (including `claude mcp add` and `mcp.json`), see [MCP clients: Cursor, VS Code, Claude Code](../guides/mcp-clients.md).

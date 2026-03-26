@@ -15,11 +15,17 @@
     <code>pip install llmdocs-mcp</code> · Python 3.12+ · Embedded Chroma + local embeddings
   </p>
   <p align="center">
+    <strong>Agents:</strong> add hosted docs MCP →
+    <a href="https://llmdocs-production.up.railway.app/mcp/"><code>llmdocs-production.up.railway.app/mcp/</code></a>
+    · <a href="#hosted-llmdocs-mcp-for-agents">setup</a>
+  </p>
+  <p align="center">
     <a href="#get-started">Get Started</a> &middot;
     <a href="#why-llmdocs">Why llmdocs?</a> &middot;
     <a href="#what-you-get">Features</a> &middot;
     <a href="#cli">CLI</a> &middot;
     <a href="#mcp-tools">MCP</a> &middot;
+    <a href="#hosted-llmdocs-mcp-for-agents">Agents (hosted MCP)</a> &middot;
     <a href="#http-surface">HTTP</a> &middot;
     <a href="#docker">Docker</a> &middot;
     <a href="#documentation">Docs</a>
@@ -116,15 +122,53 @@ llmdocs watch --config llmdocs.yaml   # rebuild on file changes
 
 ## MCP tools
 
-Point your MCP client at **`http://localhost:8080/mcp/`** (adjust host/port from config; **trailing slash** matters for Streamable HTTP routing).
-
 | Tool | What it does |
 |------|----------------|
 | `search_docs` | Hybrid semantic + keyword search over indexed chunks |
 | `get_doc` | Full document body + metadata by path |
 | `list_docs` | List documents (optional category / path prefix filters) |
 
-[MCP & deployment notes →](https://github.com/vinny380/llmdocs/blob/main/docs/getting-started/quickstart.md)
+[MCP reference →](https://github.com/vinny380/llmdocs/blob/main/docs/reference/mcp.md) · [Quickstart (local URL) →](https://github.com/vinny380/llmdocs/blob/main/docs/getting-started/quickstart.md)
+
+### Hosted llmdocs MCP (for agents)
+
+**Give Cursor, Claude Code, VS Code, and other MCP clients searchable access to this project’s official docs** (install, CLI, Docker, Railway, etc.) — no local `llmdocs serve` required.
+
+| | |
+|--|--|
+| **MCP URL** | **`https://llmdocs-production.up.railway.app/mcp/`** (keep the **trailing slash**) |
+| **Health** | [`/health`](https://llmdocs-production.up.railway.app/health) |
+
+**Cursor** — add to `~/.cursor/mcp.json` or `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "llmdocs-docs": {
+      "name": "llmdocs",
+      "url": "https://llmdocs-production.up.railway.app/mcp/"
+    }
+  }
+}
+```
+
+**Claude Code:** `claude mcp add --transport http llmdocs-docs https://llmdocs-production.up.railway.app/mcp/` (optional: `--scope project` for a shared `.mcp.json`).
+
+**VS Code** (`.vscode/mcp.json`): `"servers": { "llmdocs-docs": { "type": "http", "url": "https://llmdocs-production.up.railway.app/mcp/" } }`.
+
+This is a **public, read-only** docs index (same content as the open `docs/` folder). For **your private** documentation, deploy llmdocs yourself and point clients at **`https://<your-host>/mcp/`**.
+
+Full instructions and self-hosted URLs: **[docs/guides/mcp-clients.md](https://github.com/vinny380/llmdocs/blob/main/docs/guides/mcp-clients.md)**.
+
+### MCP clients (generic)
+
+For **local** dev, point clients at **`http://localhost:8080/mcp/`** (or your `llmdocs.yaml` host/port). llmdocs uses **Streamable HTTP** everywhere.
+
+| Product | Docs |
+|---------|------|
+| **Claude Code** | [Anthropic: Claude Code + MCP](https://docs.anthropic.com/en/docs/claude-code/mcp) |
+| **Cursor** | [Cursor MCP](https://cursor.com/docs/context/mcp) |
+| **VS Code** | [VS Code: MCP servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) |
 
 ---
 
@@ -187,6 +231,7 @@ llmdocs/
 |-----|-------------|
 | [Installation](https://github.com/vinny380/llmdocs/blob/main/docs/getting-started/installation.md) | PyPI, Docker, from source |
 | [Quickstart](https://github.com/vinny380/llmdocs/blob/main/docs/getting-started/quickstart.md) | Config, index, browser & MCP |
+| [MCP clients](https://github.com/vinny380/llmdocs/blob/main/docs/guides/mcp-clients.md) | Cursor, VS Code, Claude Code |
 | [Configuration](https://github.com/vinny380/llmdocs/blob/main/docs/guides/configuration.md) | `llmdocs.yaml` reference |
 | [Hosting](https://github.com/vinny380/llmdocs/blob/main/docs/deployment/hosting.md) | Docker, TLS, reverse proxy |
 | [Railway](https://github.com/vinny380/llmdocs/blob/main/docs/deployment/railway.md) | GitHub deploy, volumes, `PORT` |

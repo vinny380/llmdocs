@@ -78,7 +78,7 @@ docs.example.com {
 Then:
 
 - **HTTP:** `https://docs.example.com/health`
-- **MCP:** `https://docs.example.com/mcp/` (trailing slash; many clients need the full URL).
+- **MCP:** `https://docs.example.com/mcp/` (trailing slash; many clients need the full URL). Editor-specific setup: [MCP clients](../guides/mcp-clients.md).
 
 ## 5. Environment-specific config
 

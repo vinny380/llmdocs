@@ -67,6 +67,8 @@ Many clients fail with **405** or **406** if the slash is missing or the request
 
 **Tools:** `search_docs`, `get_doc`, `list_docs`.
 
+**Editor setup:** To give agents **searchable llmdocs documentation** without running a server, add the **hosted MCP**: `https://llmdocs-production.up.railway.app/mcp/`. Full **Cursor / Claude Code / VS Code** snippets: [MCP clients](../guides/mcp-clients.md#hosted-llmdocs-mcp-add-to-your-agents). For **only your machine**, use `http://127.0.0.1:8080/mcp/` after `llmdocs serve`.
+
 ## 7. Optional: auto-rebuild on edits
 
 In a second terminal:

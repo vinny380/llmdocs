@@ -39,7 +39,7 @@ The Docker build **`COPY`s `docs/`** into **`/docs`**, so **this project’s doc
 
 ## 5. After deploy
 
-- **HTTPS URL** from Railway → **`https://<your-domain>/`**, **`/health`**, **`/llms.txt`**, **`/mcp/`** (keep the **trailing slash** for MCP).
+- **HTTPS URL** from Railway → **`https://<your-domain>/`**, **`/health`**, **`/llms.txt`**, **`/mcp/`** (keep the **trailing slash** for MCP). Wire that URL into Cursor, VS Code, or Claude Code: [MCP clients](../guides/mcp-clients.md).
 - First cold start may take **minutes** while the **embedding model** downloads to the container filesystem.
 
 ## 6. Optional: run `build` on deploy

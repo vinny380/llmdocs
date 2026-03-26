@@ -37,11 +37,20 @@ llmdocs serve
 
 PyPI package name is **`llmdocs-mcp`**; the command-line program is **`llmdocs`**. Requires **Python 3.12+**.
 
+## Use llmdocs in your agents (hosted MCP)
+
+Add this project’s **official documentation** to Cursor, Claude Code, VS Code, or any Streamable HTTP MCP client — **no install required** for answering questions about llmdocs:
+
+**`https://llmdocs-production.up.railway.app/mcp/`** (trailing slash required)
+
+Tools: `search_docs`, `get_doc`, `list_docs`. [Copy-paste configs for each editor →](./guides/mcp-clients.md#hosted-llmdocs-mcp-add-to-your-agents)
+
 ## Where to go next
 
 - [Installation](./getting-started/installation.md) — PyPI, Docker, from source.
 - [Quickstart](./getting-started/quickstart.md) — config, index, browser and MCP.
 - [Configuration](./guides/configuration.md) — `llmdocs.yaml` reference.
+- [MCP clients (Cursor, VS Code, Claude Code)](./guides/mcp-clients.md) — connect `/mcp/` from your editor.
 - [Deploy to production](./deployment/hosting.md) — Docker, TLS, reverse proxy.
 - [Railway](./deployment/railway.md) — GitHub app, volumes, `PORT`.
 - [CLI reference](./reference/cli.md) — all commands and flags.
