@@ -19,6 +19,8 @@ The `llmdocs` command is the supported interface. This package is **not** intend
 
 ## Development
 
+Git history for this project lives **in this directory** (`git` is initialized here). If your editor opened a parent folder that is also a Git repo, run commands from `Projects/llmdocs` so commits apply only to llmdocs.
+
 Use a virtualenv and locked dev requirements:
 
 ```bash
