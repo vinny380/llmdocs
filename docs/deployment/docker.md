@@ -45,3 +45,4 @@ The **embedding model** downloads on first use (Hugging Face cache). Plan for ex
 ## See also
 
 - [Deploy to production](./hosting.md) — TLS, bind addresses, and full hosting checklist.
+- [Deploy on Railway](./railway.md) — GitHub + Docker + volume for `/data`.

@@ -34,12 +34,12 @@ chroma_data/
 .git/
 .gitignore
 
-# Local docs and generated outputs
-docs/
+# Local docs and generated outputs (ship docs/ in image for Railway — see Dockerfile)
 llms.txt
 llmdocs.yaml
 
-# Misc
+# Misc — exclude stray markdown except README and shipped project docs/
 *.md
 !README.md
+!docs/**/*.md
 .llmdocs/

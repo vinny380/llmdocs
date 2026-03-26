@@ -35,10 +35,17 @@ RUN mkdir -p /data/chroma /docs
 ENV LLMDOCS_CONFIG=/app/llmdocs.yaml
 COPY docker/llmdocs.yaml /app/llmdocs.yaml
 
+# Ship this repo’s docs/ when building from a checkout (Railway, etc.).
+# Operators can still mount their own tree at /docs:ro to override.
+COPY docs /docs
+
 EXPOSE 8080
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Railway and similar platforms set PORT at runtime; entrypoint passes it through.
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-ENTRYPOINT ["llmdocs"]
-CMD ["serve", "--config", "/app/llmdocs.yaml", "--data-dir", "/data/chroma"]
+HEALTHCHECK --interval=15s --timeout=5s --start-period=120s --retries=3 \
+    CMD sh -c 'curl -f "http://127.0.0.1:${PORT:-8080}/health" || exit 1'
+
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -104,6 +104,10 @@ There is **no authentication** on the HTTP/MCP surface by default. For public in
 - **Build image:** tag push (your existing GitHub Action) publishes Docker Hub.
 - **Deploy:** SSH + `docker compose pull && docker compose up -d`, or use your platform’s deploy (Kubernetes, ECS, etc.) with the same volume mounts.
 
+## 8. Railway (managed)
+
+For a **GitHub-connected** deploy with minimal ops, see [Deploy on Railway](./railway.md).
+
 ## Deploying **this** project’s `docs/` site
 
 On the server, clone or sync the repo and mount **`docs/`** as above. Use **`docs/llmdocs.yaml`** paths by baking a config that sets `docs_dir: /docs` or mount `docs/` at `/docs` and rely on the image default.
